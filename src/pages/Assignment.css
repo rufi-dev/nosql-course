@@ -591,3 +591,72 @@
     min-width: 120px;
   }
 }
+
+/* ---------- Server-backed submission ---------- */
+.asg-submit-error {
+  display: block;
+}
+.asg-crit__teacher {
+  font-size: var(--t-xs);
+  font-weight: 640;
+  color: var(--leaf-2);
+}
+.asg-received {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.asg-received__empty {
+  padding: 18px 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-3);
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.asg-review {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--card);
+}
+.asg-review__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.asg-review__who {
+  font-weight: 700;
+  font-stretch: 108%;
+}
+.asg-review__total {
+  font-size: var(--t-lg);
+  font-weight: 780;
+}
+.asg-review__scores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+}
+.asg-review__scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.asg-review__comment {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-sm);
+  line-height: 1.55;
+}

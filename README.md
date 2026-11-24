@@ -1,78 +1,123 @@
-# NoSQL, NewSQL and Distributed Architectures: interactive course site
+# NoSQL, NewSQL and Distributed Architectures: interactive course platform
 
-A browser-first course site for this 90-minute lesson. You explain the model, build a working example in a browser, and defend the trade-offs. The structure follows the *Design of Adaptive Systems* MOOC reference (course home, module page, lecture, book, H5P-style diagram, virtual lab, quiz, assignment, workshop, forum, grades, badges). The pedagogy follows *How to Develop an Interactive Lesson*.
+A full-stack course site for the 90-minute lesson *NoSQL, NewSQL and Distributed Architectures*. Students explain the model, build a working example in a browser, and defend the trade-offs. Teachers run classes, open stages, grade work and follow progress.
 
-Module 1 is fully built. Modules 2–8 appear on the course map as previews.
+- **Frontend:** React 19 + Vite, with motion animations and a custom design system.
+- **Backend:** Node.js (Express 5) JSON API.
+- **Database:** PostgreSQL. Migrations run automatically on start.
+- **Hosting:** Render. The Blueprint is in `render.yaml`.
 
-## Run it
+The structure follows the *Design of Adaptive Systems* MOOC reference (course home, module page, lecture, book, H5P-style diagram, virtual labs, quiz, assignment, workshop, forum, grades, badges). The pedagogy follows *How to Develop an Interactive Lesson*.
+
+## What it does
+
+### Students
+- Sign up with the class code from their teacher. They can join more classes later, and progress is kept per class.
+- Work through Module 1 in five stages, each opening when the previous one is finished:
+
+  | Stage | Activities |
+  |---|---|
+  | Begin | Start here |
+  | Learn | Two lectures, reading, cluster diagram |
+  | Practise | Five browser labs |
+  | Check and apply | Quiz, assignment, peer review, discussion |
+  | Reflect | Wrap-up |
+
+- Progress saves automatically and follows them to any device. Offline changes retry when the connection returns.
+- The quiz is drawn and graded by the server, so answers never reach the browser before they are answered.
+- They submit the assignment, review three classmates (sample submissions fill in when the class is small), discuss in the class forum, and see their grades, badges and a printable certificate.
+
+### Teachers
+- Create classes, each with a private join code that can be regenerated at any time.
+- See the class list: every student's progress per stage, current activity, quiz, submission and grade. A chart shows where students stop.
+- Open a stage for the whole class at once (dashboard or lesson plan page). Students' screens update within a minute.
+- Grade assignments with the rubric, which overrides the automatic pre-check. Read peer reviews and reflections.
+- Export grades as CSV, reset a student's password, remove a student from a class.
+- Preview the whole course with everything unlocked. Nothing is saved in preview.
+
+### Admin
+The account that signs up with `ADMIN_EMAIL` becomes the admin teacher, and can make other accounts teachers on **Users and roles**. Teachers sign up without a class code, then the admin promotes them.
+
+## Security model
+- **Passwords:** hashed with scrypt.
+- **Sessions:** random tokens in httpOnly, SameSite=Lax, Secure (in production) cookies. Only a SHA-256 of each token is stored.
+- **Cross-site protection:** every state-changing request must be JSON, which blocks cross-site form posts.
+- **Rate limits:** login, sign-up and password routes are rate-limited.
+- **Content-Security-Policy:** set by Helmet. `unsafe-eval` is allowed only because the in-browser MongoDB shell evaluates learner code.
+- **Server-side locks:** stage locks and completion rules are enforced by the server (`src/lib/progressRules.js`). A student cannot save work in a stage their class has not reached, or tick an activity without the evidence (90% of a lecture watched, all chapters opened, all lab checkpoints, a passed quiz, and so on).
+- **Join codes:** live only in the database. Teachers see them; students never receive them.
+
+Limitation: the labs run in the student's browser, so a determined student could forge lab checkpoints through the API. Quiz grading, submissions, reviews and forum posts are server-side.
+
+## Run locally
+
+Requirements: Node.js 22 or newer. You do **not** need to install PostgreSQL: `npm run dev:db` downloads and runs an embedded one (data in `.local-pg/`).
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # static site in dist/
-npm run preview    # serve the production build locally
+cp .env.example .env     # set ADMIN_EMAIL to the email you will sign up with
+npm run dev              # PostgreSQL :5433 + API :3001 + Vite :5173
 ```
 
-The build is a static site: `base: './'` plus hash routing. Upload `dist/` to any static host, such as GitHub Pages, Netlify, an LMS file area or a university web server. No server or database is needed.
+Open http://localhost:5173, sign up with your `ADMIN_EMAIL`, then:
+1. Create a class on the dashboard.
+2. In a private window, sign up a student using the class join code.
 
-The production build registers a small service worker (`public/sw.js`), so after the first visit the course keeps working offline.
+Other scripts:
 
-## What is in Module 1
+| Script | What it does |
+|---|---|
+| `npm test` | API integration tests against the local test database. Needs `npm run dev:db` running. |
+| `npm run build` then `npm start` | Production mode: Express serves the API and the built app on one port. |
+| `npm run lint` | oxlint over `src` and `server`. |
 
-| Step | Activity | Where |
+## Deploy on Render
+
+1. Push this repository to GitHub.
+2. In Render, choose **New → Blueprint** and pick the repository. Render reads `render.yaml` and creates:
+   - a PostgreSQL database `nosql-course-db`,
+   - a web service `nosql-course`, with `DATABASE_URL` linked automatically.
+3. When asked, set **`ADMIN_EMAIL`** to the email you will sign up with.
+4. After the first deploy, open the service URL and sign up with that email. You are the admin teacher.
+
+Free tier limits:
+- Free PostgreSQL databases expire 30 days after creation, and their data is deleted 14 days later unless you upgrade. Only one free database is allowed per account.
+- Free web services sleep after 15 minutes without traffic, and the first request then takes about a minute.
+
+Upgrade the database (at least) before real students rely on it.
+
+Environment variables:
+
+| Variable | Required | Notes |
 |---|---|---|
-| Begin | Situation, outcomes table, 3-question diagnostic with tips | `src/pages/Start.jsx` |
-| Watch | Two animated, captioned lectures with embedded questions | `src/pages/Lecture.jsx`, `src/data/lectures.js` |
-| Read | 8 chapters with a model switcher, architecture path, cost table | `src/pages/Reading.jsx`, `src/pages/reading/` |
-| Explore | Hotspot diagram of a sharded cluster, with query tracing | `src/pages/Explore.jsx` |
-| Experiment | Lab 1 MongoDB-style shell (insertMany, find, updateOne, explain) | `src/pages/labs/ShellLab.jsx`, `src/engine/` |
-| | Lab 2 shard key mapper | `src/pages/labs/ShardLab.jsx` |
-| | Lab 3 replica lag and network partitions | `src/pages/labs/ReplicaLab.jsx` |
-| | Lab 4 quorums (N, W, R) | `src/pages/labs/QuorumLab.jsx` |
-| | Lab 5 two-phase commit vs. a SQL transaction | `src/pages/labs/TxLab.jsx` |
-| Check | Quiz: 10 questions drawn from a bank of 20, with explanations | `src/pages/Quiz.jsx`, `src/data/quiz.js` |
-| Apply | Assignment with rubric, strong example and auto pre-check | `src/pages/Assignment.jsx`, `src/data/peers.js` |
-| Review | Workshop peer review: 3 samples, accuracy vs. instructor | `src/pages/Workshop.jsx` |
-| Discuss | Forum with a guided question and TA replies | `src/pages/Discussion.jsx`, `src/data/forum.js` |
-| Reflect | Takeaways, self-assessment, feedback form | `src/pages/WrapUp.jsx` |
+| `DATABASE_URL` | yes | Set by the Blueprint from the linked database. |
+| `ADMIN_EMAIL` | yes | This account becomes the admin teacher on sign-up. |
+| `DATABASE_SSL` | no | Set to `true` only when connecting through an external URL that requires TLS. |
+| `PORT` | no | Set by Render. |
 
-The site also has a course home, grades (labs 40%, quiz 30%, assignment 20%, peer review 10%), badges, a printable certificate, a free playground, and a **90-minute lesson plan** with a class timer and projector mode for teaching live.
+## Project layout
 
-## Step-by-step access (stage gating)
-
-Module 1 runs in five stages. A stage opens only when every activity in the stages before it is finished. Inside a stage, the order is free.
-
-| Stage | Activities | Opens when |
-|---|---|---|
-| 1 Begin | Start here | Always open |
-| 2 Learn | Lectures 1.1 and 1.2, Reading, Cluster diagram | Begin is finished |
-| 3 Practise | Labs 1–5 | Begin and Learn are finished |
-| 4 Check and apply | Quiz, Assignment, Peer review, Discussion | All labs are finished |
-| 5 Reflect | Wrap-up | Everything above is finished |
-
-"Finished" is enforced:
-- **Lectures:** at least 90% of the lecture must actually be played. Skipping ahead does not count.
-- **Reading:** all 8 chapters opened.
-- **Diagram:** all 9 hotspots opened.
-- **Labs:** every checkpoint reached.
-- **Quiz:** passed at 70%.
-- **Assignment:** submitted.
-- **Peer review:** 3 reviews saved.
-
-Locked activities show what is still missing.
-
-**Opening a stage early (teacher):** on the **Teach** page (lesson plan), the *Stage access* panel shows each stage's status and class code. Read the code out in class; students enter it on the locked screen to open that stage on their device. *Open on this device* opens it only in the teacher's browser. Once a stage is open it stays open. Change the codes in `src/data/course.js` (`STAGES`) before each run.
-
-Because there is no server, gating guides students but does not secure anything: someone who clears or edits their browser storage can get around it.
+```
+server/
+  index.js            Express app: security headers, rate limits, /api, static app
+  db.js, migrations/  PostgreSQL pool and SQL migrations (applied on start)
+  auth.js             passwords, sessions, access control
+  learner.js          loads evidence, builds canonical progress
+  routes/             auth, classes, progress + quiz, work (assignment, workshop, forum), teacher + admin
+  data/quiz.js        the quiz bank (server-only, never bundled)
+src/
+  lib/progressRules.js  shared stage gating and completion rules (server enforces)
+  lib/session.js, sync.js, api.js   accounts and automatic progress sync
+  pages/              learner pages, auth pages, teacher dashboard (pages/teacher)
+  data/course.js      course facts, outcomes, activities, stages, labs, badges, 90-minute plan
+render.yaml           Render Blueprint
+tests/api.test.mjs    API integration tests
+```
 
 ## Editing content
-
-- Course facts, outcomes, modules, activity order, lab checkpoints, badges and the 90-minute plan: `src/data/course.js`.
-- Quiz bank: `src/data/quiz.js`. Rubric, sample peer submissions and the strong example: `src/data/peers.js`. Forum seed posts: `src/data/forum.js`. Lecture scripts, captions and embedded questions: `src/data/lectures.js`.
-- Design tokens (colours, type, motion): `src/styles/tokens.css`. Shared components: `src/styles/components.css`.
-
-## Data and privacy
-
-Everything a learner does is stored in their browser's `localStorage` under the `nosql-course-v1` key (the Playground uses `nosql-playground-v1`). Nothing is sent anywhere. Learners can export or import their progress, or reset it, from **Settings**. Forum posts and peer reviews are therefore local. A shared forum or real peer exchange needs a backend.
-
-The assignment grade is an automatic, provisional check against the rubric. A teacher should confirm it.
+- **Course structure:** activities, stages, outcomes, lab checkpoints, badges and the lesson plan are in `src/data/course.js`.
+- **Quiz bank:** `server/data/quiz.js`.
+- **Rubric, sample submissions and strong example:** `src/data/peers.js`.
+- **Lecture scripts and captions:** `src/data/lectures.js`.
+- **Forum examples:** `src/data/forum.js`.
+- **Design tokens:** `src/styles/tokens.css`.

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { useStore, moduleProgress } from '../store.js'
+import { useSession } from '../lib/session.js'
 import { ACTIVITIES, MODULES, STAGES, STEPS, activityById } from '../data/course.js'
 import { stageStatus, activityForPath } from '../lib/stages.js'
 import Icon from './Icon.jsx'
@@ -81,6 +82,7 @@ function ActivityList({ state }) {
 export default function ModuleLayout() {
   const state = useStore()
   const syncStages = useStore((s) => s.syncStages)
+  const preview = useSession((s) => s.learner === 'preview')
   const { activities } = state
   const { done, total, pct } = moduleProgress(activities)
   const [open, setOpen] = useState(false)
@@ -141,6 +143,18 @@ export default function ModuleLayout() {
         </div>
       </aside>
       <div className="module-main" key={`${pathname}-${locked}`}>
+        {preview && (
+          <div className="preview-banner" role="note">
+            <Icon name="eye" />
+            <span>
+              <strong>Teacher preview.</strong> Every stage is open and nothing you do here is saved. Students see stages
+              unlock step by step.
+            </span>
+            <Link to="/teacher" className="btn btn--sm">
+              Dashboard
+            </Link>
+          </div>
+        )}
         <div className="route-enter">{locked ? <LockedActivity activityId={current.id} /> : <Outlet />}</div>
       </div>
     </div>

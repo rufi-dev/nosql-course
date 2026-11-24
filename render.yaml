@@ -1,0 +1,30 @@
+# Render Blueprint: one PostgreSQL database and one Node web service.
+# Deploy: Render dashboard > New > Blueprint > pick this repository.
+# Render creates both, links DATABASE_URL automatically and asks for ADMIN_EMAIL.
+databases:
+  - name: nosql-course-db
+    plan: free # free databases expire after 30 days; upgrade before real students rely on it
+    databaseName: nosql_course
+    user: nosql_course
+
+services:
+  - type: web
+    name: nosql-course
+    runtime: node
+    plan: free # free web services sleep after 15 minutes without traffic
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nosql-course-db
+          property: connectionString
+      # The account that signs up with this email becomes the admin teacher.
+      - key: ADMIN_EMAIL
+        sync: false

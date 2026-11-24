@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useStore, moduleProgress, nextActivity } from '../store.js'
+import { useSession } from '../lib/session.js'
 import { COURSE, MODULES, ACTIVITIES, STAGES, BADGES, STEPS } from '../data/course.js'
 import { stageStatus } from '../lib/stages.js'
 import { computeGrades } from '../lib/grades.js'
@@ -25,12 +26,16 @@ export default function CourseHome() {
   const earned = BADGES.filter((b) => badges[b.id])
   const minutesLeft = ACTIVITIES.filter((a) => !activities[a.id]?.done).reduce((s, a) => s + a.minutes, 0)
   const moduleDone = done === total
+  const currentClass = useSession((s) => s.classes.find((c) => c.id === s.currentClassId))
+  const preview = useSession((s) => s.learner === 'preview')
 
   return (
     <div className="page page--wide apppage">
       <header className="apphead">
         <div>
-          <div className="kicker">My course</div>
+          <div className="kicker">
+            {preview ? 'Teacher preview · nothing is saved' : currentClass ? `My course · ${currentClass.name}` : 'My course'}
+          </div>
           <h1 className="apphead__title">{COURSE.title}</h1>
           <p className="apphead__sub">
             {greeting()}
@@ -42,9 +47,9 @@ export default function CourseHome() {
                 : 'Everything starts with the corner shop problem in Module 1.'}
           </p>
         </div>
-        {!profile.name && (
-          <Link to="/settings" className="btn btn--sm">
-            <Icon name="user" /> Add your name
+        {preview && (
+          <Link to="/teacher" className="btn btn--sm">
+            <Icon name="grid" /> Back to the dashboard
           </Link>
         )}
       </header>

@@ -182,3 +182,15 @@
     flex-direction: column;
   }
 }
+.locked__note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: var(--t-xs);
+}
+.locked__note svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 1px;
+}

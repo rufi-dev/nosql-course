@@ -611,3 +611,37 @@
     font-size: 0.6rem;
   }
 }
+
+/* ---------- Server-backed workshop ---------- */
+.wks-loading {
+  display: grid;
+  gap: 14px;
+}
+.wks-final {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+}
+.wks-final svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.wks-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-2);
+  background: var(--paper-2);
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.wks-pending svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 2px;
+}

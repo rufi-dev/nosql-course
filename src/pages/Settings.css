@@ -34,3 +34,30 @@
 .set-sec--danger .btn--danger {
   align-self: flex-start;
 }
+.set-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 460px;
+}
+.set-static {
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.set-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.set-ok {
+  font-size: var(--t-sm);
+  color: var(--leaf-2);
+}
+.set-err {
+  font-size: var(--t-sm);
+  color: var(--coral-2);
+}
+.set-sec > .btn {
+  align-self: flex-start;
+}

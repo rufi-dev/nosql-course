@@ -1,13 +1,14 @@
-// Offline support: after the first visit the course keeps working without a
-// connection. Pages: network first, fall back to cache. Hashed assets and
-// fonts: cache first.
-const CACHE = 'nosql-course-v1'
+// Offline support for the app shell. After the first visit the course pages
+// load without a connection; progress saves are queued by the app and sent
+// when the connection returns. API responses are never cached (they are
+// private and per user).
+const CACHE = 'nosql-course-v2'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => c.addAll(['./', './index.html', './favicon.svg']))
+      .then((c) => c.addAll(['/', '/favicon.svg']))
       .then(() => self.skipWaiting()),
   )
 })
@@ -26,21 +27,23 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
+  if (url.pathname.startsWith('/api/')) return
 
-  const isPage = req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html')
-  if (isPage) {
+  // Pages: network first, fall back to the cached shell.
+  if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
         .then((res) => {
           const copy = res.clone()
-          caches.open(CACHE).then((c) => c.put(req, copy))
+          caches.open(CACHE).then((c) => c.put('/', copy))
           return res
         })
-        .catch(() => caches.match(req).then((r) => r || caches.match('./index.html'))),
+        .catch(() => caches.match('/')),
     )
     return
   }
 
+  // Hashed assets, fonts, icons: cache first.
   event.respondWith(
     caches.match(req).then(
       (hit) =>

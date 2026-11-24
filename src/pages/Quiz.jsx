@@ -1,14 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import ActivityFrame from '../components/ActivityFrame.jsx'
 import Icon from '../components/Icon.jsx'
 import CodeBlock from '../components/CodeBlock.jsx'
-import { Meter, Ring, EASE_EXPO, EASE_OUT } from '../components/ui.jsx'
+import { Callout, Meter, Ring, EASE_EXPO, EASE_OUT } from '../components/ui.jsx'
 import { useStore } from '../store.js'
 import { COURSE, OUTCOMES } from '../data/course.js'
-import { QUESTIONS, QUIZ_SECONDS, QUIZ_SIZE, drawQuiz, isCorrect, questionById } from '../data/quiz.js'
+import { api } from '../lib/api.js'
+import { applyServerState } from '../lib/sync.js'
+import { useSession } from '../lib/session.js'
 import './Quiz.css'
+
+// The question bank lives on the server (server/data/quiz.js). Questions arrive
+// without answers; each answer is checked by the server, which also records
+// the attempt. Nothing in the browser can reveal the answers ahead of time.
+const DEFAULT_INFO = { size: 10, bank: null, seconds: 15 * 60 }
 
 const TYPE_LABEL = {
   single: 'Choose one',
@@ -37,11 +44,35 @@ function answerText(q, value) {
   return label(value)
 }
 
+function ErrorNote({ error, onRetry }) {
+  if (!error) return null
+  return (
+    <Callout tone="warn" className="quiz-error">
+      {error}{' '}
+      {onRetry ? (
+        <button type="button" className="btn btn--sm quiz-error__retry" onClick={onRetry}>
+          <Icon name="reset" />
+          Try again
+        </button>
+      ) : null}
+    </Callout>
+  )
+}
+
+function PreviewNote() {
+  return (
+    <Callout tone="info" icon="eye" title="Teacher preview:">
+      students take the quiz here. Questions are drawn and marked on the server, and their attempts appear on your{' '}
+      <Link to="/teacher">dashboard</Link>.
+    </Callout>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Intro                                                               */
 /* ------------------------------------------------------------------ */
 
-function Intro({ onStart, attempts, best }) {
+function Intro({ onStart, attempts, best, info, starting, preview, error, onRetry }) {
   const passed = best >= COURSE.quizPass
   return (
     <div className="quiz-intro">
@@ -60,12 +91,12 @@ function Intro({ onStart, attempts, best }) {
           <div>
             <dt>Questions</dt>
             <dd>
-              {QUIZ_SIZE} drawn at random from a bank of {QUESTIONS.length}
+              {info.size} drawn at random from {info.bank ? `a bank of ${info.bank}` : 'the question bank'}
             </dd>
           </div>
           <div>
             <dt>Time</dt>
-            <dd>About {QUIZ_SECONDS / 60} minutes. When time runs out the attempt is marked as it stands.</dd>
+            <dd>About {Math.round(info.seconds / 60)} minutes. When time runs out the attempt is marked as it stands.</dd>
           </div>
           <div>
             <dt>Pass mark</dt>
@@ -83,10 +114,11 @@ function Intro({ onStart, attempts, best }) {
             </dd>
           </div>
         </dl>
+        {preview ? <PreviewNote /> : <ErrorNote error={error} onRetry={onRetry} />}
         <div className="quiz-rules__actions">
-          <button type="button" className="btn btn--primary btn--lg" onClick={onStart}>
-            <Icon name="play" />
-            {attempts.length ? 'Start a new attempt' : 'Start the quiz'}
+          <button type="button" className="btn btn--primary btn--lg" onClick={onStart} disabled={preview || starting}>
+            <Icon name={starting ? 'clock' : 'play'} />
+            {starting ? 'Drawing questions…' : attempts.length ? 'Start a new attempt' : 'Start the quiz'}
           </button>
           <span className="hint">Leaving this page ends the attempt without recording it.</span>
         </div>
@@ -162,7 +194,7 @@ function Intro({ onStart, attempts, best }) {
 /* Question                                                            */
 /* ------------------------------------------------------------------ */
 
-function OrderList({ q, value, onChange, checked }) {
+function OrderList({ q, value, onChange, checked, correct }) {
   const move = (i, dir) => {
     const j = i + dir
     if (j < 0 || j >= value.length) return
@@ -175,8 +207,8 @@ function OrderList({ q, value, onChange, checked }) {
       <AnimatePresence initial={false}>
         {value.map((id, i) => {
           const opt = q.options.find((o) => o.id === id)
-          const right = checked && q.correct[i] === id
-          const wrong = checked && q.correct[i] !== id
+          const right = checked && correct?.[i] === id
+          const wrong = checked && correct?.[i] !== id
           return (
             <motion.li
               key={id}
@@ -221,10 +253,10 @@ function OrderList({ q, value, onChange, checked }) {
   )
 }
 
-function ChoiceList({ q, value, onChange, checked }) {
+function ChoiceList({ q, value, onChange, checked, correctAnswer }) {
   const multi = q.type === 'multi'
   const sel = new Set(multi ? value || [] : value ? [value] : [])
-  const correct = new Set(Array.isArray(q.correct) ? q.correct : [q.correct])
+  const correct = new Set(Array.isArray(correctAnswer) ? correctAnswer : correctAnswer ? [correctAnswer] : [])
   const toggle = (id) => {
     if (checked) return
     if (!multi) return onChange(id)
@@ -266,12 +298,12 @@ function ChoiceList({ q, value, onChange, checked }) {
   )
 }
 
-function Feedback({ q, value }) {
-  const right = isCorrect(q, value)
+function Feedback({ q, value, fb }) {
+  const right = fb.correct
   const chosen = q.type === 'multi' ? value || [] : q.type === 'order' ? [] : [value]
-  const hints = q.options.filter((o) => o.misconception && chosen.includes(o.id))
-  const missed =
-    q.type === 'multi' ? q.options.filter((o) => q.correct.includes(o.id) && !(value || []).includes(o.id)) : []
+  const hints = q.options.filter((o) => fb.misconceptions?.[o.id] && chosen.includes(o.id))
+  const correctIds = Array.isArray(fb.correctAnswer) ? fb.correctAnswer : [fb.correctAnswer]
+  const missed = q.type === 'multi' ? q.options.filter((o) => correctIds.includes(o.id) && !(value || []).includes(o.id)) : []
   return (
     <motion.div
       className={`quiz-feedback ${right ? 'is-right' : 'is-wrong'}`}
@@ -285,12 +317,12 @@ function Feedback({ q, value }) {
         </span>
         <strong>{right ? 'Correct' : 'Not this time'}</strong>
       </div>
-      <p>{q.explanation}</p>
+      <p>{fb.explanation}</p>
       {!right && hints.length > 0 && (
         <ul className="quiz-feedback__hints">
           {hints.map((h) => (
             <li key={h.id}>
-              <span className="quiz-feedback__hintlabel">You chose “{h.label}”.</span> {h.misconception}
+              <span className="quiz-feedback__hintlabel">You chose “{h.label}”.</span> {fb.misconceptions[h.id]}
             </li>
           ))}
         </ul>
@@ -302,10 +334,15 @@ function Feedback({ q, value }) {
       )}
       {!right && q.type === 'order' && (
         <ol className="quiz-feedback__order">
-          {q.correct.map((id) => (
-            <li key={id}>{q.options.find((o) => o.id === id).label}</li>
+          {correctIds.map((id) => (
+            <li key={id}>{q.options.find((o) => o.id === id)?.label ?? id}</li>
           ))}
         </ol>
+      )}
+      {!right && (q.type === 'single' || q.type === 'code') && (
+        <p className="quiz-feedback__missed">
+          Correct answer: “{q.options.find((o) => o.id === fb.correctAnswer)?.label ?? fb.correctAnswer}”.
+        </p>
       )}
     </motion.div>
   )
@@ -316,20 +353,13 @@ function Feedback({ q, value }) {
 /* ------------------------------------------------------------------ */
 
 function Results({ result, onRetake, best, reason }) {
-  const { draw, responses, score, total, pct } = result
+  const { review, score, total, pct } = result
   const passed = pct >= COURSE.quizPass
   const reduce = useReducedMotion()
-  const byOutcome = useMemo(() => {
-    const map = new Map()
-    draw.forEach(({ id }) => {
-      const q = questionById(id)
-      const row = map.get(q.outcome) || { right: 0, total: 0 }
-      row.total++
-      if (isCorrect(q, responses[id])) row.right++
-      map.set(q.outcome, row)
-    })
-    return OUTCOMES.filter((o) => map.has(o.id)).map((o) => ({ ...o, ...map.get(o.id) }))
-  }, [draw, responses])
+  const byOutcome = OUTCOMES.map((o) => {
+    const row = result.byOutcome.find((x) => x.outcome === o.id)
+    return row ? { ...o, right: row.correct, total: row.total } : null
+  }).filter(Boolean)
 
   return (
     <div className="quiz-results">
@@ -400,11 +430,11 @@ function Results({ result, onRetake, best, reason }) {
           Review every answer
         </h3>
         <ol className="quiz-review">
-          {draw.map(({ id }, i) => {
-            const q = questionById(id)
-            const right = isCorrect(q, responses[id])
+          {review.map(({ question: q, answer, correct: right }, i) => {
+            const chosen = answer == null ? [] : Array.isArray(answer) ? answer : [answer]
+            const hints = right || q.type === 'order' ? [] : chosen.filter((x) => q.misconceptions?.[x])
             return (
-              <li key={id}>
+              <li key={q.id}>
                 <details className={`quiz-review__item ${right ? 'is-right' : 'is-wrong'}`} open={!right}>
                   <summary>
                     <span className="quiz-review__status">
@@ -420,7 +450,7 @@ function Results({ result, onRetake, best, reason }) {
                       <div>
                         <div className="quiz-review__lbl">Your answer</div>
                         <p className={right ? 'quiz-review__yours is-right' : 'quiz-review__yours is-wrong'}>
-                          {answerText(q, responses[id])}
+                          {answerText(q, answer)}
                         </p>
                       </div>
                       {!right && (
@@ -431,6 +461,13 @@ function Results({ result, onRetake, best, reason }) {
                       )}
                     </div>
                     <p className="quiz-review__explain">{q.explanation}</p>
+                    {hints.length > 0 && (
+                      <ul className="quiz-feedback__hints quiz-review__hints">
+                        {hints.map((x) => (
+                          <li key={x}>{q.misconceptions[x]}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </details>
               </li>
@@ -449,88 +486,152 @@ function Results({ result, onRetake, best, reason }) {
 export default function Quiz() {
   const attempts = useStore((s) => s.quiz.attempts)
   const best = useStore((s) => s.quiz.best)
-  const recordQuizAttempt = useStore((s) => s.recordQuizAttempt)
+  const learner = useSession((s) => s.learner)
+  const preview = learner === 'preview'
   const reduce = useReducedMotion()
 
-  const [phase, setPhase] = useState('intro') // intro | running | results
-  const [draw, setDraw] = useState([])
+  const [info, setInfo] = useState(DEFAULT_INFO)
+  const [phase, setPhase] = useState('intro') // intro | running | finishing | results
+  const [attempt, setAttempt] = useState(null) // { id, questions, deadline }
   const [index, setIndex] = useState(0)
   const [responses, setResponses] = useState({})
-  const [checked, setChecked] = useState({})
-  const [remaining, setRemaining] = useState(QUIZ_SECONDS)
+  const [feedback, setFeedback] = useState({}) // questionId -> server verdict
+  const [checking, setChecking] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState(null) // { message, retry }
+  const [now, setNow] = useState(() => Date.now())
   const [result, setResult] = useState(null)
   const [confirmEnd, setConfirmEnd] = useState(false)
-  const recordedRef = useRef(false)
+  const finishingRef = useRef(false)
   const questionRef = useRef(null)
 
-  const start = () => {
-    const d = drawQuiz()
-    const initial = {}
-    d.forEach((x) => {
-      if (x.start) initial[x.id] = x.start
-    })
-    setDraw(d)
-    setResponses(initial)
-    setChecked({})
-    setIndex(0)
-    setRemaining(QUIZ_SECONDS)
-    setResult(null)
-    setConfirmEnd(false)
-    recordedRef.current = false
-    setPhase('running')
+  // Rules (bank size, time limit) come from the server.
+  useEffect(() => {
+    if (preview) return undefined
+    let alive = true
+    api
+      .get('/api/quiz')
+      .then((r) => alive && setInfo({ size: r.size, bank: r.bank, seconds: r.seconds }))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [preview])
+
+  const start = async () => {
+    if (preview || starting) return
+    setStarting(true)
+    setError(null)
+    try {
+      const a = await api.post('/api/quiz/attempts')
+      const initial = {}
+      a.questions.forEach((x) => {
+        if (x.type === 'order') initial[x.id] = x.start || x.options.map((o) => o.id)
+      })
+      setAttempt({ id: a.id, questions: a.questions, deadline: Date.now() + a.seconds * 1000 })
+      setInfo((i) => ({ ...i, seconds: a.seconds, size: a.questions.length }))
+      setResponses(initial)
+      setFeedback({})
+      setIndex(0)
+      setNow(Date.now())
+      setResult(null)
+      setConfirmEnd(false)
+      finishingRef.current = false
+      setPhase('running')
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+    } catch (err) {
+      const locked = err.code === 'preview' || err.code === 'stage_locked'
+      setError({
+        message: err.code === 'preview' ? 'Teacher accounts preview the quiz; students take it.' : err.message,
+        retry: locked ? null : start,
+      })
+      if (phase !== 'intro') setPhase('intro')
+    } finally {
+      setStarting(false)
+    }
   }
 
   const finish = useCallback(
-    (reason = 'done') => {
-      if (recordedRef.current) return
-      recordedRef.current = true
-      const score = draw.filter(({ id }) => isCorrect(questionById(id), responses[id])).length
-      const answers = Object.fromEntries(
-        draw.map(({ id }) => [id, { value: responses[id] ?? null, correct: isCorrect(questionById(id), responses[id]) }]),
-      )
-      const pct = recordQuizAttempt({ score, total: draw.length, answers })
-      setResult({ draw, responses, score, total: draw.length, pct, reason })
-      setPhase('results')
-      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+    async (reason = 'done') => {
+      if (!attempt || finishingRef.current) return
+      finishingRef.current = true
+      setPhase('finishing')
+      setError(null)
+      // "Marked as it stands": send chosen but unchecked answers before finishing.
+      for (const x of attempt.questions) {
+        const v = responses[x.id]
+        const has = Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null
+        if (feedback[x.id] || !has) continue
+        try {
+          const verdict = await api.post(`/api/quiz/attempts/${attempt.id}/answer`, { questionId: x.id, answer: v })
+          setFeedback((f) => ({ ...f, [x.id]: verdict }))
+        } catch {
+          /* time is up or already answered: the server marks it as it stands */
+        }
+      }
+      try {
+        const res = await api.post(`/api/quiz/attempts/${attempt.id}/finish`)
+        applyServerState(res.state)
+        setResult({ ...res, reason })
+        setPhase('results')
+        window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+      } catch (err) {
+        finishingRef.current = false
+        setError({ message: err.message, retry: () => finish(reason) })
+      }
     },
-    [draw, responses, recordQuizAttempt, reduce],
+    [attempt, responses, feedback, reduce],
   )
+
+  const remaining = attempt ? Math.max(0, Math.ceil((attempt.deadline - now) / 1000)) : info.seconds
 
   // Timer
   useEffect(() => {
-    if (phase !== 'running') return
-    const t = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000)
+    if (phase !== 'running') return undefined
+    const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [phase])
   useEffect(() => {
     if (phase === 'running' && remaining === 0) finish('time')
   }, [remaining, phase, finish])
 
-  const current = draw[index]
-  const q = current ? questionById(current.id) : null
+  const questions = attempt?.questions || []
+  const q = phase === 'running' || phase === 'finishing' ? questions[index] : null
   const value = q ? responses[q.id] : undefined
-  const isChecked = q ? Boolean(checked[q.id]) : false
+  const fb = q ? feedback[q.id] : null
+  const isChecked = Boolean(fb)
   const hasAnswer =
     q && (q.type === 'order' ? true : q.type === 'multi' ? (value || []).length > 0 : value !== undefined && value !== null)
-  const last = index === draw.length - 1
+  const last = index === questions.length - 1
 
   const setValue = (v) => setResponses((r) => ({ ...r, [q.id]: v }))
-  const check = () => {
-    if (!hasAnswer || isChecked) return
-    setChecked((c) => ({ ...c, [q.id]: true }))
+  const check = async () => {
+    if (!hasAnswer || isChecked || checking || phase !== 'running') return
+    setChecking(true)
+    setError(null)
+    try {
+      const res = await api.post(`/api/quiz/attempts/${attempt.id}/answer`, { questionId: q.id, answer: value })
+      setFeedback((f) => ({ ...f, [q.id]: res }))
+    } catch (err) {
+      if (err.code === 'time_up') finish('time')
+      else setError({ message: err.message, retry: check })
+    } finally {
+      setChecking(false)
+    }
   }
   const next = () => {
     if (last) finish('done')
     else {
       setIndex((i) => i + 1)
       setConfirmEnd(false)
+      setError(null)
       requestAnimationFrame(() => questionRef.current?.focus({ preventScroll: true }))
     }
   }
 
   // Keyboard: digits choose, Enter checks / continues
   useEffect(() => {
-    if (phase !== 'running' || !q) return
+    if (phase !== 'running' || !q) return undefined
     const onKey = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const tag = e.target.tagName
@@ -557,26 +658,34 @@ export default function Quiz() {
   })
 
   const lowTime = remaining <= 60
-  const answeredCount = Object.keys(checked).length
+  const answeredCount = Object.keys(feedback).length
+  const unchecked = questions.length - answeredCount
 
   return (
     <ActivityFrame id="quiz">
-      {phase === 'intro' && <Intro onStart={start} attempts={attempts} best={best} />}
+      {phase === 'intro' && (
+        <Intro
+          onStart={start}
+          attempts={attempts}
+          best={best}
+          info={info}
+          starting={starting}
+          preview={preview}
+          error={error?.message}
+          onRetry={error?.retry}
+        />
+      )}
 
-      {phase === 'running' && q && (
-        <section className="quiz-run" aria-label="Quiz attempt">
+      {(phase === 'running' || phase === 'finishing') && q && (
+        <section className="quiz-run" aria-label="Quiz attempt" aria-busy={phase === 'finishing'}>
           <div className="quiz-bar">
             <div className="quiz-bar__count">
               <span className="quiz-bar__q">
-                Question <strong className="tabular">{index + 1}</strong> of {draw.length}
+                Question <strong className="tabular">{index + 1}</strong> of {questions.length}
               </span>
-              <Meter value={((index + (isChecked ? 1 : 0)) / draw.length) * 100} label="Quiz progress" />
+              <Meter value={((index + (isChecked ? 1 : 0)) / questions.length) * 100} label="Quiz progress" />
             </div>
-            <div
-              className={`quiz-timer ${lowTime ? 'is-low' : ''}`}
-              role="timer"
-              aria-label={`Time left ${fmtTime(remaining)}`}
-            >
+            <div className={`quiz-timer ${lowTime ? 'is-low' : ''}`} role="timer" aria-label={`Time left ${fmtTime(remaining)}`}>
               <Icon name="clock" />
               <span className="tabular">{fmtTime(remaining)}</span>
             </div>
@@ -604,45 +713,56 @@ export default function Quiz() {
               {q.code && <CodeBlock code={q.code} title="mongosh" copy={false} className="quiz-card__code" />}
 
               {q.type === 'order' ? (
-                <OrderList q={q} value={value} onChange={setValue} checked={isChecked} />
+                <OrderList q={q} value={value} onChange={setValue} checked={isChecked} correct={fb?.correctAnswer} />
               ) : (
-                <ChoiceList q={q} value={value} onChange={setValue} checked={isChecked} />
+                <ChoiceList q={q} value={value} onChange={setValue} checked={isChecked} correctAnswer={fb?.correctAnswer} />
               )}
 
-              <div aria-live="polite">{isChecked && <Feedback q={q} value={value} />}</div>
+              <div aria-live="polite">{isChecked && <Feedback q={q} value={value} fb={fb} />}</div>
 
-              <div className="quiz-card__actions">
-                <div className="quiz-card__end">
-                  {confirmEnd ? (
-                    <>
-                      <span className="hint">
-                        End now? {draw.length - answeredCount} unchecked question{draw.length - answeredCount === 1 ? '' : 's'} will be
-                        marked as they stand.
-                      </span>
-                      <button type="button" className="btn btn--danger btn--sm" onClick={() => finish('ended')}>
+              <ErrorNote error={error?.message} onRetry={error?.retry} />
+
+              {phase === 'finishing' ? (
+                <div className="quiz-card__actions">
+                  <span className="hint quiz-finishing" role="status">
+                    <Icon name="clock" />
+                    Marking your attempt…
+                  </span>
+                </div>
+              ) : (
+                <div className="quiz-card__actions">
+                  <div className="quiz-card__end">
+                    {confirmEnd ? (
+                      <>
+                        <span className="hint">
+                          End now? {unchecked} unchecked question{unchecked === 1 ? '' : 's'} will be marked as they
+                          stand.
+                        </span>
+                        <button type="button" className="btn btn--danger btn--sm" onClick={() => finish('ended')}>
+                          End attempt
+                        </button>
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setConfirmEnd(false)}>
+                          Keep going
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => setConfirmEnd(true)}>
                         End attempt
                       </button>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => setConfirmEnd(false)}>
-                        Keep going
-                      </button>
-                    </>
+                    )}
+                  </div>
+                  {!isChecked ? (
+                    <button type="button" className="btn btn--dark btn--lg" onClick={check} disabled={!hasAnswer || checking}>
+                      {checking ? 'Checking…' : 'Check answer'}
+                    </button>
                   ) : (
-                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => setConfirmEnd(true)}>
-                      End attempt
+                    <button type="button" className="btn btn--primary btn--lg" onClick={next}>
+                      {last ? 'See results' : 'Next question'}
+                      <Icon name="arrow-right" />
                     </button>
                   )}
                 </div>
-                {!isChecked ? (
-                  <button type="button" className="btn btn--dark btn--lg" onClick={check} disabled={!hasAnswer}>
-                    Check answer
-                  </button>
-                ) : (
-                  <button type="button" className="btn btn--primary btn--lg" onClick={next}>
-                    {last ? 'See results' : 'Next question'}
-                    <Icon name="arrow-right" />
-                  </button>
-                )}
-              </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </section>

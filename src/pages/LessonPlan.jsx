@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { LESSON_PLAN, activityById, COURSE, STAGES, stageOfActivity } from '../data/course.js'
-import { useStore } from '../store.js'
-import { stageStatus } from '../lib/stages.js'
+import { useSession, isTeacherRole } from '../lib/session.js'
+import { api } from '../lib/api.js'
 import Icon from '../components/Icon.jsx'
 import { useDocTitle, EASE_EXPO, EASE_OUT } from '../components/ui.jsx'
 import './app-pages.css'
@@ -43,86 +43,137 @@ function useClassTimer() {
 
 function StageChip({ activityId }) {
   const stage = stageOfActivity(activityId)
-  const open = useStore((st) => stageStatus(st, stage.id).open)
-  if (open) return null
   return (
-    <span className="chip chip--outline" title="Read out the class code to open it for students">
-      <Icon name="lock" /> {stage.title} locked
+    <span className="chip chip--outline" title="The Module 1 stage this activity belongs to">
+      Stage {STAGES.indexOf(stage) + 1} · {stage.title}
     </span>
   )
 }
 
+// Teachers open stages for a whole class here (same control as the dashboard).
 function StageAccess() {
-  const state = useStore()
-  const unlock = useStore((s) => s.unlockStage)
-  const relock = useStore((s) => s.relockStage)
-  const [showCodes, setShowCodes] = useState(false)
+  const user = useSession((s) => s.user)
+  const classes = useSession((s) => s.classes)
+  const reload = useSession((s) => s.reload)
+  const teacher = isTeacherRole(user?.role)
+  const active = classes.filter((c) => !c.archived)
+  const [classId, setClassId] = useState(null)
+  const [pending, setPending] = useState({}) // optimistic switch state while saving
+  const [error, setError] = useState('')
+  const cls = active.find((c) => c.id === classId) || active[0]
+
+  if (!teacher) {
+    return (
+      <section className="lp-stages lp-stages--note">
+        <Icon name="lock" />
+        <p className="muted">
+          Module 1 opens stage by stage for each student. Teachers can open a stage for the whole class during a live
+          session from this page or the class dashboard.{' '}
+          {user ? null : (
+            <>
+              <Link to="/login?next=/lesson-plan">Log in as a teacher</Link> to use it.
+            </>
+          )}
+        </p>
+      </section>
+    )
+  }
+
+  const toggle = async (stageId, open) => {
+    setPending((p) => ({ ...p, [stageId]: open }))
+    setError('')
+    try {
+      await api.put(`/api/teacher/classes/${cls.id}/stages`, { stageId, open })
+      await reload()
+    } catch (err) {
+      setError(`Could not update ${stageId}: ${err.message}`)
+    } finally {
+      setPending((p) => {
+        const next = { ...p }
+        delete next[stageId]
+        return next
+      })
+    }
+  }
+
   return (
     <section className="lp-stages" aria-labelledby="stages-h">
       <div className="lp-stages__head">
         <div>
           <div className="kicker">Teacher controls</div>
           <h2 id="stages-h" className="home-h2">
-            Stage access
+            Stage access for the class
           </h2>
           <p className="muted lp-stages__lead">
-            Students move step by step: each stage opens only when every activity before it is finished. To move the class
-            on early, read out a stage's class code; students type it on the locked screen. Opening a stage below
-            affects this browser only.
+            Students move step by step: each stage opens when they finish everything before it. Open a stage here to move
+            the whole class on together; their screens update within a minute.
           </p>
         </div>
-        <label className="switch">
-          <input type="checkbox" checked={showCodes} onChange={(e) => setShowCodes(e.target.checked)} />
-          Show class codes
-        </label>
+        {active.length > 1 && (
+          <label className="field lp-stages__pick">
+            <span className="label">Class</span>
+            <select className="select" value={cls?.id} onChange={(e) => setClassId(e.target.value)}>
+              {active.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
-      <ol className="lp-stages__list">
-        {STAGES.map((stage, i) => {
-          const st = stageStatus(state, stage.id)
-          const early = st.reason === 'teacher' || st.reason === 'code'
-          return (
-            <li key={stage.id} className={`lp-stage ${st.open ? 'is-open' : ''}`}>
-              <span className="lp-stage__n">{i + 1}</span>
-              <div className="lp-stage__body">
-                <span className="lp-stage__title">{stage.title}</span>
-                <span className="faint">{stage.lead}</span>
-              </div>
-              <span className="lp-stage__status">
-                {i === 0 ? (
-                  <span className="chip chip--done">Always open</span>
-                ) : !st.open ? (
-                  <span className="chip chip--outline">
-                    <Icon name="lock" /> Locked
+      {!cls ? (
+        <p className="muted">
+          You have no classes yet. <Link to="/teacher">Create one on the dashboard</Link> and share its join code.
+        </p>
+      ) : (
+        <>
+          <ol className="lp-stages__list">
+            {STAGES.map((stage, i) => {
+              const open = i === 0 || (pending[stage.id] ?? Boolean(cls.stageOverrides?.[stage.id]))
+              return (
+                <li key={stage.id} className={`lp-stage ${open ? 'is-open' : ''}`}>
+                  <span className="lp-stage__n">{i + 1}</span>
+                  <div className="lp-stage__body">
+                    <span className="lp-stage__title">{stage.title}</span>
+                    <span className="faint">{stage.lead}</span>
+                  </div>
+                  <span className="lp-stage__status">
+                    {i === 0 ? (
+                      <span className="chip chip--done">Always open</span>
+                    ) : open ? (
+                      <span className="chip chip--accent">Open for {cls.name}</span>
+                    ) : (
+                      <span className="chip chip--outline">
+                        <Icon name="lock" /> By progress only
+                      </span>
+                    )}
                   </span>
-                ) : early ? (
-                  <span className="chip chip--accent">Opened early</span>
-                ) : (
-                  <span className="chip chip--done">
-                    <Icon name="check" /> Open by progress
+                  <span className="lp-stage__action">
+                    {i > 0 && (
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={open}
+                          aria-busy={stage.id in pending}
+                          onChange={(e) => toggle(stage.id, e.target.checked)}
+                          aria-label={`Open ${stage.title} for ${cls.name}`}
+                        />
+                        {open ? 'Open' : 'Locked'}
+                      </label>
+                    )}
                   </span>
-                )}
-              </span>
-              <span className="lp-stage__code mono" aria-label={stage.code ? `Class code for ${stage.title}` : undefined}>
-                {stage.code ? (showCodes ? stage.code : '••••-••') : ''}
-              </span>
-              <span className="lp-stage__action">
-                {i === 0 ? null : !st.open ? (
-                  <button type="button" className="btn btn--sm" onClick={() => unlock(stage.id, 'teacher')}>
-                    Open on this device
-                  </button>
-                ) : early ? (
-                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => relock(stage.id)}>
-                    Lock again
-                  </button>
-                ) : null}
-              </span>
-            </li>
-          )
-        })}
-      </ol>
-      <p className="faint lp-stages__note">
-        Codes live in <code>src/data/course.js</code> under <code>STAGES</code>. Change them before each run of the course.
-      </p>
+                </li>
+              )
+            })}
+          </ol>
+          {error && <p className="lp-stages__error">{error}</p>}
+          <p className="faint lp-stages__note">
+            Class code for {cls.name}: <strong className="mono">{cls.joinCode}</strong>. Manage the class on the{' '}
+            <Link to={`/teacher/classes/${cls.id}`}>dashboard</Link>.
+          </p>
+        </>
+      )}
     </section>
   )
 }

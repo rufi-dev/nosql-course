@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import ActivityFrame from '../components/ActivityFrame.jsx'
@@ -8,84 +8,11 @@ import { Callout, Meter, EASE_EXPO, EASE_OUT } from '../components/ui.jsx'
 import { useStore } from '../store.js'
 import { COURSE } from '../data/course.js'
 import { RUBRIC, RUBRIC_MAX, STRONG_EXAMPLE, COMMON_ERRORS } from '../data/peers.js'
+import { feedbackText, wordCount } from '../lib/assignmentCheck.js'
+import { api } from '../lib/api.js'
+import { applyServerState } from '../lib/sync.js'
+import { useSession } from '../lib/session.js'
 import './Assignment.css'
-
-/* ------------------------------------------------------------------ */
-/* Automated pre-check: transparent, one point per check               */
-/* ------------------------------------------------------------------ */
-
-const wordCount = (s) => (s || '').trim().split(/\s+/).filter(Boolean).length
-
-function autoCheck(d) {
-  const schema = d.schema || ''
-  const queries = d.queries || ''
-  const result = d.result || ''
-  const just = d.justification || ''
-  const data = `${schema}\n${queries}`
-  const t = (re, s) => re.test(s)
-
-  const groups = {
-    schema: [
-      { label: 'Defines an _id for each product', pass: t(/_id/, data) },
-      { label: 'Has a name field', pass: t(/\bname\b/, data) },
-      { label: 'Stores stock as a number', pass: t(/stock\s*:\s*-?\d/, data) },
-      { label: 'Models tags as an array', pass: t(/tags\s*:\s*\[/, data) },
-      { label: 'Includes Tea, Rice and Coffee', pass: t(/tea/i, data) && t(/rice/i, data) && t(/coffee/i, data) },
-    ],
-    query: [
-      { label: 'Inserts with insertMany', pass: t(/insertMany\s*\(/, queries) },
-      { label: 'Finds low stock with $lt: 5', pass: t(/\$lt\s*:\s*5\b/, queries) },
-      { label: 'Updates one record with updateOne', pass: t(/updateOne\s*\(/, queries) },
-      { label: 'Restocks with $inc', pass: t(/\$inc\s*:/, queries) },
-      {
-        label: 'Targets Tea in the update',
-        pass: t(/updateOne\s*\(\s*\{\s*(_id\s*:\s*["']p1["']|name\s*:\s*["']Tea["'])/, queries),
-      },
-    ],
-    result: [
-      { label: 'Pastes real shell output', pass: t(/[{[]/, result) },
-      { label: 'Low-stock result includes Tea', pass: t(/tea/i, result) },
-      { label: 'Low-stock result includes Coffee', pass: t(/coffee/i, result) },
-      { label: 'Shows Tea at 13 after the update', pass: t(/\b13\b/, result) },
-      { label: 'Shows the update acknowledgement', pass: t(/(modifiedCount|matchedCount|acknowledged)/, result) },
-    ],
-    tradeoff: [
-      {
-        label: 'Names a shard key and argues for it (60+ words)',
-        pass: (d.shardKey || '').trim().length > 2 && wordCount(just) >= 60,
-      },
-      {
-        label: 'Reasons about cardinality or write spread',
-        pass: t(/(cardinalit|distinct|spread|evenly|hot ?shard|hotspot|monoton|balanc)/i, just),
-      },
-      { label: 'Reasons about query isolation', pass: t(/(target|isolat|scatter|broadcast|single shard|one shard)/i, just) },
-      { label: 'Explains replica lag or stale reads', pass: t(/(\blag|stale|secondar|replicat)/i, just) },
-      {
-        label: 'Says what happens during a partition (CAP)',
-        pass: t(/(partition|\bcap\b|consisten|availab|steps? down|stepped down|elect)/i, just),
-      },
-    ],
-  }
-
-  const checks = RUBRIC.map((c) => {
-    const items = groups[c.id]
-    return { id: c.id, title: c.title, items, points: items.filter((i) => i.pass).length }
-  })
-  const total = checks.reduce((s, c) => s + c.points, 0)
-  return { checks, total, score: Math.round((total / RUBRIC_MAX) * 100) }
-}
-
-function feedbackText(checks) {
-  const total = checks.reduce((s, c) => s + c.points, 0)
-  const missing = checks.flatMap((c) => c.items.filter((i) => !i.pass).map((i) => i.label.toLowerCase()))
-  let lead
-  if (total >= 18) lead = 'Strong submission: every part of the brief is covered.'
-  else if (total >= 14) lead = 'Solid work with a few gaps.'
-  else if (total >= 9) lead = 'The core is there, but several parts of the brief are missing.'
-  else lead = 'Much of the brief is missing.'
-  if (!missing.length) return `${lead} Your teacher may still adjust the grade after reading it.`
-  return `${lead} To improve: ${missing.slice(0, 3).join('; ')}${missing.length > 3 ? `; and ${missing.length - 3} more below` : ''}.`
-}
 
 function fmtTime(ts) {
   return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(ts)
@@ -255,7 +182,7 @@ const SELF_CHECK = [
   { id: 'cap', label: 'I say what the system does during a network partition' },
 ]
 
-function Form({ onSubmit }) {
+function Form({ onSubmit, submitting, submitError }) {
   const draft = useStore((s) => s.assignment.draft)
   const save = useStore((s) => s.saveAssignmentDraft)
   const shardData = useStore((s) => s.labs.shard?.data || {})
@@ -305,7 +232,7 @@ function Form({ onSubmit }) {
       reader.readAsText(file)
     } else {
       update({ attachment: meta })
-      if (file.size > 5 * 1024 * 1024) setFileError('Only the file name and size are kept in this browser.')
+      setFileError('Only the file name and size are kept. Paste anything your teacher needs to read into the fields above.')
     }
     e.target.value = ''
   }
@@ -515,7 +442,7 @@ function Form({ onSubmit }) {
         <div className="asg-side__card">
           <div className="asg-save" aria-live="polite">
             <span className={`asg-save__dot ${saving ? 'is-saving' : ''}`} aria-hidden="true" />
-            {saving ? 'Saving…' : savedAt ? `Draft saved at ${fmtTime(savedAt)}` : 'Drafts save automatically'}
+            {saving ? 'Saving…' : savedAt ? `Draft saved at ${fmtTime(savedAt)}` : 'Drafts save to your account automatically'}
           </div>
           <div>
             <div className="spread">
@@ -543,13 +470,18 @@ function Form({ onSubmit }) {
               </li>
             ))}
           </ul>
-          <button type="submit" className="btn btn--primary btn--lg btn--block">
-            <Icon name="upload" />
-            Submit for grading
+          {submitError ? (
+            <p className="asg-error asg-submit-error" role="alert">
+              {submitError}
+            </p>
+          ) : null}
+          <button type="submit" className="btn btn--primary btn--lg btn--block" disabled={submitting}>
+            <Icon name={submitting ? 'clock' : 'upload'} />
+            {submitting ? 'Submitting…' : 'Submit for grading'}
           </button>
           <p className="hint">
-            Submitting runs an automatic check against the rubric and gives a provisional grade. You can edit and resubmit
-            until your teacher grades it.
+            Submitting sends your work to your teacher and runs an automatic check against the rubric for a provisional
+            grade. You can edit and resubmit until your teacher grades it.
           </p>
         </div>
       </aside>
@@ -561,12 +493,93 @@ function Form({ onSubmit }) {
 /* Submitted view                                                      */
 /* ------------------------------------------------------------------ */
 
-function Submitted() {
+const sumScores = (scores) => RUBRIC.reduce((s, c) => s + (Number(scores?.[c.id]) || 0), 0)
+
+function ReviewsReceived({ reviews, loading }) {
+  return (
+    <section aria-labelledby="asg-received-title">
+      <h3 id="asg-received-title" className="rule-label">
+        Peer reviews of your work
+      </h3>
+      {loading ? (
+        <div className="asg-received">
+          <div className="skeleton" style={{ height: 96 }} />
+        </div>
+      ) : reviews.length ? (
+        <ol className="asg-received">
+          {reviews.map((r) => (
+            <li key={`${r.reviewer}-${r.reviewedAt}`} className="asg-review">
+              <div className="asg-review__head">
+                <span className="asg-review__who">{r.reviewer}</span>
+                <span className="asg-review__total tabular">
+                  {sumScores(r.scores)}
+                  <span className="faint"> / {RUBRIC_MAX}</span>
+                </span>
+              </div>
+              <ul className="asg-review__scores">
+                {RUBRIC.map((c) => (
+                  <li key={c.id}>
+                    <span>{c.short}</span>
+                    <span className="tabular">{r.scores?.[c.id] ?? '–'}/5</span>
+                  </li>
+                ))}
+              </ul>
+              {r.comment ? <p className="asg-review__comment">{r.comment}</p> : null}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="asg-received__empty">
+          No classmate has reviewed your work yet. Reviews appear here, anonymously, as classmates finish the workshop.
+        </p>
+      )}
+    </section>
+  )
+}
+
+function Submitted({ onEdited }) {
   const a = useStore((s) => s.assignment)
-  const withdraw = useStore((s) => s.withdrawAssignment)
+  const [details, setDetails] = useState(null) // { submission, reviewsReceived }
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setLoadError('')
+    try {
+      setDetails(await api.get('/api/assignment'))
+    } catch (err) {
+      setLoadError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const graded = a.status === 'graded'
   const checks = a.checks || []
-  const total = checks.reduce((s, c) => s + c.points, 0)
-  const d = a.draft || {}
+  const autoTotal = checks.reduce((s, c) => s + c.points, 0)
+  const fields = details?.submission?.fields || a.draft || {}
+
+  const edit = async () => {
+    if (graded) return
+    setEditing(true)
+    setEditError('')
+    try {
+      const res = await api.post('/api/assignment/withdraw')
+      applyServerState(res.state)
+      onEdited?.()
+    } catch (err) {
+      setEditError(err.code === 'graded' ? 'Your teacher has already graded this submission, so it can no longer be edited.' : err.message)
+    } finally {
+      setEditing(false)
+    }
+  }
 
   return (
     <motion.div
@@ -588,7 +601,7 @@ function Submitted() {
               </tr>
               <tr className="is-ok">
                 <th scope="row">Grading status</th>
-                <td>Auto-checked, provisional</td>
+                <td>{graded ? `Graded by your teacher${a.gradedAt ? ` on ${fmtDateTime(a.gradedAt)}` : ''}` : 'Auto-checked, provisional'}</td>
               </tr>
               <tr>
                 <th scope="row">Due</th>
@@ -596,16 +609,16 @@ function Submitted() {
               </tr>
               <tr>
                 <th scope="row">Submitted</th>
-                <td>{fmtDateTime(a.submittedAt)}</td>
+                <td>{a.submittedAt ? fmtDateTime(a.submittedAt) : '–'}</td>
               </tr>
               <tr>
                 <th scope="row">File</th>
                 <td>
-                  {d.attachment ? (
+                  {fields.attachment ? (
                     <span className="asg-file asg-file--plain">
                       <Icon name="file" />
-                      <span className="asg-file__name">{d.attachment.name}</span>
-                      <span className="faint tabular">{fmtSize(d.attachment.size)}</span>
+                      <span className="asg-file__name">{fields.attachment.name}</span>
+                      <span className="faint tabular">{fmtSize(fields.attachment.size)}</span>
                     </span>
                   ) : (
                     <span className="faint">No file attached</span>
@@ -615,15 +628,26 @@ function Submitted() {
               <tr>
                 <th scope="row">Grade</th>
                 <td>
-                  <strong className="asg-grade tabular">
-                    {total} / {RUBRIC_MAX}
-                  </strong>{' '}
-                  <span className="faint">({a.score}%, provisional)</span>
+                  {graded ? (
+                    <>
+                      <strong className="asg-grade tabular">
+                        {sumScores(a.teacherScores)} / {RUBRIC_MAX}
+                      </strong>{' '}
+                      <span className="faint">({a.teacherScore}%, set by your teacher)</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong className="asg-grade tabular">
+                        {autoTotal} / {RUBRIC_MAX}
+                      </strong>{' '}
+                      <span className="faint">({a.autoScore ?? a.score}%, provisional)</span>
+                    </>
+                  )}
                 </td>
               </tr>
               <tr>
                 <th scope="row">Feedback</th>
-                <td>{feedbackText(checks)}</td>
+                <td>{graded ? a.teacherFeedback || 'Your teacher did not add written feedback.' : feedbackText(checks)}</td>
               </tr>
             </tbody>
           </table>
@@ -633,15 +657,27 @@ function Submitted() {
             Go to peer review
             <Icon name="arrow-right" />
           </Link>
-          <button type="button" className="btn" onClick={withdraw}>
-            <Icon name="reset" />
-            Edit submission
+          <button type="button" className="btn" onClick={edit} disabled={graded || editing}>
+            <Icon name={graded ? 'lock' : 'reset'} />
+            {editing ? 'Opening…' : 'Edit submission'}
           </button>
         </div>
-        <Callout tone="info">
-          This grade comes from an automatic check of what your submission contains. It cannot judge how good your
-          reasoning is, so your teacher may raise or lower it after reading it.
-        </Callout>
+        {editError ? (
+          <Callout tone="warn" title="Could not reopen it.">
+            {editError}
+          </Callout>
+        ) : null}
+        {graded ? (
+          <Callout tone="success" title="Graded.">
+            Your teacher read this submission and set the grade above. It replaces the automatic check and can no longer be
+            edited.
+          </Callout>
+        ) : (
+          <Callout tone="info">
+            Auto-checked, provisional; your teacher may adjust it. The automatic check sees what your submission contains,
+            not how good your reasoning is, so your teacher may raise or lower the grade after reading it.
+          </Callout>
+        )}
       </section>
 
       <section aria-labelledby="asg-checks-title">
@@ -651,6 +687,7 @@ function Submitted() {
         <div className="asg-checks">
           {checks.map((c, i) => {
             const crit = RUBRIC.find((r) => r.id === c.id)
+            const teacher = graded ? a.teacherScores?.[c.id] : null
             return (
               <motion.article
                 key={c.id}
@@ -662,11 +699,16 @@ function Submitted() {
                 <header className="asg-crit__head">
                   <span className="asg-crit__title">{c.title}</span>
                   <span className="asg-crit__pts tabular">
-                    {c.points}
+                    {teacher ?? c.points}
                     <span className="faint">/5</span>
                   </span>
                 </header>
-                <Meter value={(c.points / 5) * 100} label={`${c.title}: ${c.points} of 5`} />
+                <Meter value={((teacher ?? c.points) / 5) * 100} label={`${c.title}: ${teacher ?? c.points} of 5`} />
+                {graded ? (
+                  <p className="asg-crit__teacher">
+                    Teacher {teacher}/5 · automatic check {c.points}/5
+                  </p>
+                ) : null}
                 <ul className="asg-crit__items">
                   {c.items.map((it) => (
                     <li key={it.label} className={it.pass ? 'is-pass' : 'is-miss'}>
@@ -685,16 +727,28 @@ function Submitted() {
         </div>
       </section>
 
+      {loadError ? (
+        <Callout tone="warn" title="Peer reviews could not load.">
+          {loadError}{' '}
+          <button type="button" className="btn btn--sm" onClick={load}>
+            <Icon name="reset" />
+            Try again
+          </button>
+        </Callout>
+      ) : (
+        <ReviewsReceived reviews={details?.reviewsReceived || []} loading={loading} />
+      )}
+
       <Disclosure title="Your submission" meta="Read only" icon="file">
         <div className="asg-example">
-          <CodeBlock code={d.schema || ''} title="Schema" copy={false} />
-          <CodeBlock code={d.queries || ''} title="Queries" copy={false} />
-          <CodeBlock code={d.result || ''} title="Result" copy={false} />
+          <CodeBlock code={fields.schema || ''} title="Schema" copy={false} />
+          <CodeBlock code={fields.queries || ''} title="Queries" copy={false} />
+          <CodeBlock code={fields.result || ''} title="Result" copy={false} />
           <div className="asg-example__just">
             <div className="asg-example__label">
-              Shard key <code>{d.shardKey}</code>
+              Shard key <code>{fields.shardKey}</code>
             </div>
-            <p>{d.justification}</p>
+            <p>{fields.justification}</p>
           </div>
         </div>
       </Disclosure>
@@ -708,22 +762,60 @@ function Submitted() {
 
 /* ------------------------------------------------------------------ */
 
+function PreviewNote() {
+  return (
+    <Callout tone="info" icon="eye" title="Teacher preview:">
+      students submit here. Each submission is auto-checked on the server and waits for your grade on the{' '}
+      <Link to="/teacher">dashboard</Link>.
+    </Callout>
+  )
+}
+
 export default function Assignment() {
   const submittedAt = useStore((s) => s.assignment.submittedAt)
   const draft = useStore((s) => s.assignment.draft)
-  const submitAssignment = useStore((s) => s.submitAssignment)
-  const preview = useMemo(() => autoCheck(draft || {}), [draft])
+  const learner = useSession((s) => s.learner)
+  const preview = learner === 'preview'
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
-  const onSubmit = () => {
-    submitAssignment({ checks: preview.checks, score: preview.score })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const onSubmit = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    setSubmitError('')
+    const d = draft || {}
+    const fields = {
+      schema: d.schema || '',
+      queries: d.queries || '',
+      result: d.result || '',
+      shardKey: d.shardKey || '',
+      justification: d.justification || '',
+      attachment: d.attachment
+        ? { name: d.attachment.name, size: d.attachment.size, ...(typeof d.attachment.text === 'string' ? { text: d.attachment.text } : null) }
+        : null,
+    }
+    try {
+      const res = await api.post('/api/assignment/submit', { fields })
+      applyServerState(res.state)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (err) {
+      setSubmitError(
+        err.code === 'preview'
+          ? 'Teacher accounts preview the assignment; students submit it.'
+          : err.code === 'graded'
+            ? 'Your teacher has already graded this submission.'
+            : err.message,
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <ActivityFrame id="assignment">
       <AnimatePresence mode="wait" initial={false}>
-        {submittedAt ? (
-          <Submitted key="done" />
+        {submittedAt && !preview ? (
+          <Submitted key="done" onEdited={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
         ) : (
           <motion.div
             key="form"
@@ -735,7 +827,7 @@ export default function Assignment() {
           >
             <Brief />
             <Prep />
-            <Form onSubmit={onSubmit} />
+            {preview ? <PreviewNote /> : <Form onSubmit={onSubmit} submitting={submitting} submitError={submitError} />}
           </motion.div>
         )}
       </AnimatePresence>

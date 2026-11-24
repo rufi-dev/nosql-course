@@ -572,3 +572,31 @@
     width: 100%;
   }
 }
+
+/* ---------- Server states ---------- */
+.quiz-error {
+  margin-top: 4px;
+}
+.quiz-error__retry {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.quiz-finishing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.quiz-finishing svg {
+  width: 16px;
+  height: 16px;
+  animation: quiz-spin 1.4s linear infinite;
+}
+@keyframes quiz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.quiz-review__hints {
+  margin-top: 8px;
+}

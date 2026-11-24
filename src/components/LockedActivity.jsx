@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useStore } from '../store.js'
@@ -8,30 +7,17 @@ import Icon from './Icon.jsx'
 import { Meter, useDocTitle, EASE_EXPO } from './ui.jsx'
 import './LockedActivity.css'
 
-// Shown in place of an activity whose stage is not open yet.
+// Shown in place of an activity whose stage is not open yet for this learner.
 export default function LockedActivity({ activityId }) {
   const state = useStore()
-  const redeem = useStore((s) => s.redeemStageCode)
   const status = activityStatus(state, activityId)
   const a = activityById(activityId)
-  const [code, setCode] = useState('')
-  const [error, setError] = useState('')
   useDocTitle(`${a.short} (locked)`)
 
   const missing = status.missing.map(activityById)
   const earlierIds = STAGES.slice(0, status.index).flatMap((st) => st.activities)
   const doneEarlier = earlierIds.length - missing.length
-  const earlierTotal = missing.length
   const first = missing[0]
-
-  const submit = (e) => {
-    e.preventDefault()
-    setError('')
-    const stage = redeem(code)
-    if (!stage) setError('That code does not match any stage. Check it with your teacher.')
-    else if (stage.id !== status.stage.id) setError(`That code opened ${stage.title}. This activity needs the ${status.stage.title} code.`)
-    setCode('')
-  }
 
   return (
     <div className="locked">
@@ -69,13 +55,9 @@ export default function LockedActivity({ activityId }) {
         </div>
         <div className="locked__progress">
           <span className="tabular">
-            {earlierTotal} activit{earlierTotal === 1 ? 'y' : 'ies'} left before this opens
+            {missing.length} activit{missing.length === 1 ? 'y' : 'ies'} left before this opens
           </span>
-          <Meter
-            dark
-            value={earlierIds.length ? (doneEarlier / earlierIds.length) * 100 : 0}
-            label="Progress toward this stage"
-          />
+          <Meter dark value={earlierIds.length ? (doneEarlier / earlierIds.length) * 100 : 0} label="Progress toward this stage" />
         </div>
         {first && (
           <Link to={first.path} className="btn btn--primary btn--lg locked__cta">
@@ -98,7 +80,9 @@ export default function LockedActivity({ activityId }) {
                   </span>
                   <span className="locked__itemtext">
                     <span>{m.short}</span>
-                    <span className="faint">{COMPLETION_RULES[m.id] || (m.completion === 'auto' ? 'Completes automatically when you finish it' : 'Mark it done when finished')}</span>
+                    <span className="faint">
+                      {COMPLETION_RULES[m.id] || (m.completion === 'auto' ? 'Completes automatically when you finish it' : 'Mark it done when finished')}
+                    </span>
                   </span>
                   <Icon name="arrow-right" />
                 </Link>
@@ -107,39 +91,17 @@ export default function LockedActivity({ activityId }) {
           </ol>
         </section>
 
-        <section className="locked__teacher" aria-labelledby="code-h">
-          <h2 id="code-h" className="locked__h2">
-            Opened early by your teacher?
+        <section className="locked__teacher" aria-labelledby="teach-h">
+          <h2 id="teach-h" className="locked__h2">
+            Moving on as a class?
           </h2>
           <p className="muted">
-            In class your teacher can open the {status.stage.title} stage before everyone has finished. Enter the class
-            code they give you.
+            Your teacher can open the {status.stage.title} stage for the whole class from the class dashboard, for example
+            during a live session. When they do, it unlocks here within a minute, no reload needed.
           </p>
-          <form className="locked__form" onSubmit={submit}>
-            <label className="visually-hidden" htmlFor="stage-code">
-              Class code
-            </label>
-            <input
-              id="stage-code"
-              className="input mono"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g. ABCD-12"
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              aria-invalid={error ? 'true' : undefined}
-              aria-describedby={error ? 'stage-code-err' : undefined}
-            />
-            <button type="submit" className="btn btn--dark" disabled={!code.trim()}>
-              Open stage
-            </button>
-          </form>
-          {error && (
-            <p className="locked__error" id="stage-code-err" role="alert">
-              {error}
-            </p>
-          )}
+          <p className="faint locked__note">
+            <Icon name="shield" /> Locks are checked by the server, so work in a locked stage cannot be saved early.
+          </p>
         </section>
       </div>
     </div>

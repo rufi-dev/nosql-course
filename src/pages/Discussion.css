@@ -296,3 +296,101 @@
     gap: 2px;
   }
 }
+
+/* ---------- Server-backed thread ---------- */
+.dsc-composer__as {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.dsc-composer__as strong {
+  color: var(--ink);
+  font-weight: 680;
+}
+.dsc-loading {
+  display: grid;
+  gap: 12px;
+}
+.dsc-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-3);
+}
+.dsc-empty__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--paper-3);
+  color: var(--ink-2);
+}
+.dsc-empty__icon svg {
+  width: 20px;
+  height: 20px;
+}
+.dsc-empty__title {
+  font-weight: 700;
+}
+
+/* Example answers: separate, collapsible, clearly not the class thread */
+.dsc-examples {
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--paper-2);
+}
+.dsc-examples > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--t-sm);
+}
+.dsc-examples > summary::-webkit-details-marker {
+  display: none;
+}
+.dsc-examples > summary > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--ink-2);
+}
+.dsc-examples__title {
+  font-weight: 700;
+}
+.dsc-examples__meta {
+  margin-left: auto;
+  font-size: var(--t-xs);
+}
+.dsc-examples__chev {
+  transition: transform var(--d-med) var(--ease-out);
+}
+.dsc-examples[open] .dsc-examples__chev {
+  transform: rotate(180deg);
+}
+.dsc-examples__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 18px 18px;
+}
+.dsc-examples__replyto {
+  margin-bottom: 8px;
+  font-size: var(--t-xs);
+}
+.dsc-card--sample {
+  background: var(--card);
+}
+@media (max-width: 560px) {
+  .dsc-examples__meta {
+    display: none;
+  }
+}

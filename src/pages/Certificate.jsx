@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useStore } from '../store.js'
+import { useSession } from '../lib/session.js'
 import { COURSE, MODULES, OUTCOMES } from '../data/course.js'
 import { computeGrades } from '../lib/grades.js'
 import { certificateRequirements } from './Badges.jsx'
@@ -26,7 +27,7 @@ function code(name, ts) {
 export default function Certificate() {
   useDocTitle('Certificate')
   const state = useStore()
-  const setName = useStore((s) => s.setName)
+  const setName = useSession((s) => s.updateName)
   const [draft, setDraft] = useState(state.profile.name || '')
   const reqs = certificateRequirements(state)
   const ready = reqs.every((r) => r.ok)
@@ -147,7 +148,7 @@ export default function Certificate() {
         </div>
       </motion.article>
       <p className="faint cert-note no-print">
-        Issued by this course site from progress saved in your browser. It records completion of the module; it is not a
+        Issued by this course site from your progress on the course server. It records completion of the module; it is not a
         university transcript.
       </p>
     </div>

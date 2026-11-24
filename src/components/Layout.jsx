@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { useStore, moduleProgress } from '../store.js'
+import { useSession, isTeacherRole } from '../lib/session.js'
+import { useSync } from '../lib/sync.js'
 import { COURSE, BADGES } from '../data/course.js'
 import Icon from './Icon.jsx'
 import { Ring, EASE_OUT } from './ui.jsx'
@@ -25,22 +27,201 @@ export function LogoMark({ size = 30, onDark = false }) {
   )
 }
 
-const NAV = [
-  { to: '/', label: 'Overview', end: true },
-  { to: '/course', label: 'My course' },
-  { to: '/module/1', label: 'Module 1' },
-  { to: '/playground', label: 'Playground' },
-  { to: '/lesson-plan', label: 'Teach' },
-]
+const NAV = {
+  anon: [
+    { to: '/', label: 'Overview', end: true },
+    { to: '/playground', label: 'Playground' },
+    { to: '/lesson-plan', label: 'Lesson plan' },
+  ],
+  student: [
+    { to: '/', label: 'Overview', end: true },
+    { to: '/course', label: 'My course' },
+    { to: '/module/1', label: 'Module 1' },
+    { to: '/playground', label: 'Playground' },
+  ],
+  teacher: [
+    { to: '/', label: 'Overview', end: true },
+    { to: '/teacher', label: 'Dashboard' },
+    { to: '/module/1', label: 'Preview course' },
+    { to: '/lesson-plan', label: 'Lesson plan' },
+    { to: '/playground', label: 'Playground' },
+  ],
+}
+
+const SYNC_LABEL = {
+  saved: { icon: 'check', text: 'Saved' },
+  saving: { icon: 'upload', text: 'Saving' },
+  pending: { icon: 'clock', text: 'Saving' },
+  offline: { icon: 'wifi-off', text: 'Offline, will retry' },
+  error: { icon: 'alert', text: 'Not saved, retrying' },
+}
+
+function SyncStatus() {
+  const status = useSync((s) => s.status)
+  const label = SYNC_LABEL[status]
+  if (!label) return null
+  return (
+    <span className={`syncstatus syncstatus--${status}`} role="status" aria-live="polite" title={label.text}>
+      <Icon name={label.icon} />
+      <span className="syncstatus__text">{label.text}</span>
+    </span>
+  )
+}
+
+function initials(name = '') {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('')
+}
+
+function AccountMenu({ dark }) {
+  const { user, classes, currentClassId, switchClass, logout } = useSession()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const teacher = isTeacherRole(user.role)
+  useEffect(() => setOpen(false), [location.pathname])
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => {
+      if (!ref.current?.contains(e.target)) setOpen(false)
+    }
+    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const current = classes.find((c) => c.id === currentClassId)
+  return (
+    <div className="acct" ref={ref}>
+      <button
+        type="button"
+        className={`toolchip acct__btn ${dark ? 'is-dark' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="acct__avatar" aria-hidden="true">
+          {initials(user.name) || <Icon name="user" />}
+        </span>
+        <span className="acct__name">{user.name.split(' ')[0]}</span>
+        <Icon name="chevron-down" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="acct__menu"
+            role="menu"
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.22, ease: EASE_OUT }}
+          >
+            <div className="acct__who">
+              <strong>{user.name}</strong>
+              <span className="faint">{user.email}</span>
+              <span className="chip chip--outline acct__role">
+                {user.role === 'admin' ? 'Admin teacher' : teacher ? 'Teacher' : 'Student'}
+              </span>
+            </div>
+            {!teacher && (
+              <div className="acct__section">
+                <div className="acct__label">Class</div>
+                {classes.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={c.id === currentClassId}
+                    className={`acct__item ${c.id === currentClassId ? 'is-current' : ''}`}
+                    onClick={async () => {
+                      setOpen(false)
+                      if (c.id !== currentClassId) {
+                        await switchClass(c.id)
+                        navigate('/course')
+                      }
+                    }}
+                  >
+                    <span>{c.name}</span>
+                    {c.id === currentClassId && <Icon name="check" />}
+                  </button>
+                ))}
+                <Link to="/join" role="menuitem" className="acct__item">
+                  <span>{current ? 'Join another class' : 'Join a class'}</span>
+                  <Icon name="plus" />
+                </Link>
+              </div>
+            )}
+            <div className="acct__section">
+              {teacher && (
+                <Link to="/teacher" role="menuitem" className="acct__item">
+                  <span>Teacher dashboard</span>
+                  <Icon name="grid" />
+                </Link>
+              )}
+              {user.role === 'admin' && (
+                <Link to="/admin/users" role="menuitem" className="acct__item">
+                  <span>Users and roles</span>
+                  <Icon name="users" />
+                </Link>
+              )}
+              {!teacher && (
+                <>
+                  <Link to="/grades" role="menuitem" className="acct__item">
+                    <span>Grades</span>
+                    <Icon name="chart" />
+                  </Link>
+                  <Link to="/badges" role="menuitem" className="acct__item">
+                    <span>Badges and certificate</span>
+                    <Icon name="award" />
+                  </Link>
+                </>
+              )}
+              <Link to="/settings" role="menuitem" className="acct__item">
+                <span>Settings</span>
+                <Icon name="settings" />
+              </Link>
+              <button
+                type="button"
+                role="menuitem"
+                className="acct__item"
+                onClick={async () => {
+                  setOpen(false)
+                  await logout()
+                  navigate('/')
+                }}
+              >
+                <span>Log out</span>
+                <Icon name="arrow-up-right" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 function TopBar({ dark }) {
   const activities = useStore((s) => s.activities)
   const badges = useStore((s) => s.badges)
+  const status = useSession((s) => s.status)
+  const user = useSession((s) => s.user)
+  const learner = useSession((s) => s.learner)
   const { pct } = moduleProgress(activities)
   const earned = Object.keys(badges).length
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
+  const role = !user ? 'anon' : isTeacherRole(user.role) ? 'teacher' : 'student'
+  const nav = NAV[role]
 
   useEffect(() => setOpen(false), [location.pathname])
   useEffect(() => {
@@ -49,6 +230,20 @@ function TopBar({ dark }) {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  const mobileExtra =
+    role === 'anon'
+      ? [
+          { to: '/login', label: 'Log in' },
+          { to: '/signup', label: 'Create account' },
+        ]
+      : role === 'student'
+        ? [
+            { to: '/grades', label: 'Grades' },
+            { to: '/badges', label: 'Badges' },
+            { to: '/settings', label: 'Settings' },
+          ]
+        : [{ to: '/settings', label: 'Settings' }]
 
   return (
     <header className={`topbar ${dark ? 'topbar--dark' : ''} ${scrolled ? 'is-scrolled' : ''}`}>
@@ -62,7 +257,7 @@ function TopBar({ dark }) {
         </Link>
 
         <nav className="topnav" aria-label="Main">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className="topnav__link">
               {n.label}
             </NavLink>
@@ -70,25 +265,43 @@ function TopBar({ dark }) {
         </nav>
 
         <div className="topbar__tools">
-          <Link to="/badges" className="toolchip toolchip--badges" aria-label={`Badges: ${earned} of ${BADGES.length} earned`}>
-            <Icon name="award" />
-            <span className="tabular">
-              {earned}/{BADGES.length}
-            </span>
-          </Link>
-          <Link to="/grades" className="toolchip" aria-label={`Module 1 progress ${pct}%, open grades`}>
-            <Ring
-              value={pct}
-              size={24}
-              stroke={3}
-              track={dark ? 'oklch(1 0 0 / 0.15)' : 'var(--paper-3)'}
-              color={dark ? 'var(--mint)' : 'var(--leaf)'}
-            />
-            <span className="tabular">{pct}%</span>
-          </Link>
-          <Link to="/settings" className="toolchip toolchip--icon toolchip--settings" aria-label="Profile and settings">
-            <Icon name="user" />
-          </Link>
+          {status === 'loading' ? (
+            <span className="skeleton topbar__skel" aria-hidden="true" />
+          ) : role === 'anon' ? (
+            <>
+              <Link to="/login" className={`btn btn--sm topbar__login ${dark ? 'btn--on-dark' : 'btn--ghost'}`}>
+                Log in
+              </Link>
+              <Link to="/signup" className="btn btn--sm btn--primary topbar__signup">
+                Create account
+              </Link>
+            </>
+          ) : (
+            <>
+              {learner === 'synced' && <SyncStatus />}
+              {role === 'student' && (
+                <>
+                  <Link to="/badges" className="toolchip toolchip--badges" aria-label={`Badges: ${earned} of ${BADGES.length} earned`}>
+                    <Icon name="award" />
+                    <span className="tabular">
+                      {earned}/{BADGES.length}
+                    </span>
+                  </Link>
+                  <Link to="/grades" className="toolchip toolchip--progress" aria-label={`Module 1 progress ${pct}%, open grades`}>
+                    <Ring
+                      value={pct}
+                      size={24}
+                      stroke={3}
+                      track={dark ? 'oklch(1 0 0 / 0.15)' : 'var(--paper-3)'}
+                      color={dark ? 'var(--mint)' : 'var(--leaf)'}
+                    />
+                    <span className="tabular">{pct}%</span>
+                  </Link>
+                </>
+              )}
+              <AccountMenu dark={dark} />
+            </>
+          )}
           <button
             type="button"
             className="toolchip toolchip--icon menu-btn"
@@ -113,14 +326,12 @@ function TopBar({ dark }) {
             exit={{ opacity: 0, y: -6, transition: { duration: 0.15 } }}
             transition={{ duration: 0.28, ease: EASE_OUT }}
           >
-            {[...NAV, { to: '/grades', label: 'Grades' }, { to: '/badges', label: 'Badges' }, { to: '/settings', label: 'Settings' }].map(
-              (n) => (
-                <NavLink key={n.to} to={n.to} end={n.end} className="mobile-nav__link">
-                  {n.label}
-                  <Icon name="chevron-right" />
-                </NavLink>
-              ),
-            )}
+            {[...nav, ...mobileExtra].map((n) => (
+              <NavLink key={n.to} to={n.to} end={n.end} className="mobile-nav__link">
+                {n.label}
+                <Icon name="chevron-right" />
+              </NavLink>
+            ))}
           </motion.nav>
         )}
       </AnimatePresence>
@@ -136,7 +347,7 @@ function Footer({ flush }) {
           <LogoMark size={26} />
           <div>
             <div className="site-footer__title">{COURSE.title}</div>
-            <div className="faint">Progress, posts and submissions are saved in this browser only.</div>
+            <div className="faint">Progress is saved to your account and shared with your teacher.</div>
           </div>
         </div>
         <nav className="site-footer__links" aria-label="Footer">

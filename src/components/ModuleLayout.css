@@ -223,3 +223,24 @@
 .rail__item.is-locked .rail__title {
   opacity: 0.8;
 }
+
+.preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--s-5);
+  padding: 10px 10px 10px 14px;
+  border-radius: var(--r-3);
+  background: var(--sky-wash);
+  color: var(--ink);
+  font-size: var(--t-sm);
+}
+.preview-banner > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--sky);
+}
+.preview-banner span {
+  flex: 1;
+}

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import SiteLayout from './components/Layout.jsx'
 import ModuleLayout from './components/ModuleLayout.jsx'
+import { RequireAuth, RequireLearner, RequireTeacher, RequireAdmin, GuestOnly, PageLoading } from './components/Guards.jsx'
 
 const Landing = lazy(() => import('./pages/Landing.jsx'))
 const CourseHome = lazy(() => import('./pages/CourseHome.jsx'))
@@ -28,17 +29,14 @@ const LessonPlan = lazy(() => import('./pages/LessonPlan.jsx'))
 const Playground = lazy(() => import('./pages/Playground.jsx'))
 const Settings = lazy(() => import('./pages/Settings.jsx'))
 const NotFound = lazy(() => import('./pages/NotFound.jsx'))
-
-function Loading() {
-  return (
-    <div className="page route-loading" aria-busy="true" aria-label="Loading">
-      <div className="skeleton" style={{ height: 14, width: 140 }} />
-      <div className="skeleton" style={{ height: 44, width: 'min(560px, 90%)' }} />
-      <div className="skeleton" style={{ height: 18, width: 'min(420px, 70%)' }} />
-      <div className="skeleton" style={{ height: 280, marginTop: 16 }} />
-    </div>
-  )
-}
+const Login = lazy(() => import('./pages/auth/Login.jsx'))
+const Signup = lazy(() => import('./pages/auth/Signup.jsx'))
+const Join = lazy(() => import('./pages/auth/Join.jsx'))
+const TeacherHome = lazy(() => import('./pages/teacher/TeacherHome.jsx'))
+const TeacherClass = lazy(() => import('./pages/teacher/TeacherClass.jsx'))
+const TeacherStudent = lazy(() => import('./pages/teacher/TeacherStudent.jsx'))
+const TeacherSubmission = lazy(() => import('./pages/teacher/TeacherSubmission.jsx'))
+const AdminUsers = lazy(() => import('./pages/teacher/AdminUsers.jsx'))
 
 // Top-level pages get a short entrance; module pages animate inside ModuleLayout.
 function Page({ children }) {
@@ -50,14 +48,39 @@ function Page({ children }) {
   )
 }
 
+const learner = (el) => (
+  <RequireLearner>
+    <Page>{el}</Page>
+  </RequireLearner>
+)
+const teacher = (el) => (
+  <RequireTeacher>
+    <Page>{el}</Page>
+  </RequireTeacher>
+)
+
 export default function App() {
   return (
-    <Suspense fallback={<Loading />}>
+    <Suspense fallback={<PageLoading />}>
       <Routes>
         <Route element={<SiteLayout />}>
           <Route index element={<Landing />} />
-          <Route path="course" element={<Page><CourseHome /></Page>} />
-          <Route path="module/1" element={<ModuleLayout />}>
+
+          {/* Accounts */}
+          <Route path="login" element={<GuestOnly><Page><Login /></Page></GuestOnly>} />
+          <Route path="signup" element={<GuestOnly><Page><Signup /></Page></GuestOnly>} />
+          <Route path="join" element={<RequireAuth><Page><Join /></Page></RequireAuth>} />
+
+          {/* Learner */}
+          <Route path="course" element={learner(<CourseHome />)} />
+          <Route
+            path="module/1"
+            element={
+              <RequireLearner>
+                <ModuleLayout />
+              </RequireLearner>
+            }
+          >
             <Route index element={<ModuleOverview />} />
             <Route path="start" element={<Start />} />
             <Route path="lecture/:lectureId" element={<Lecture />} />
@@ -76,12 +99,30 @@ export default function App() {
             <Route path="wrap-up" element={<WrapUp />} />
           </Route>
           <Route path="module/:n" element={<Page><ModulePreview /></Page>} />
-          <Route path="grades" element={<Page><Grades /></Page>} />
-          <Route path="badges" element={<Page><Badges /></Page>} />
-          <Route path="certificate" element={<Page><Certificate /></Page>} />
+          <Route path="grades" element={learner(<Grades />)} />
+          <Route path="badges" element={learner(<Badges />)} />
+          <Route path="certificate" element={learner(<Certificate />)} />
+          <Route path="settings" element={<RequireAuth><Page><Settings /></Page></RequireAuth>} />
+
+          {/* Teacher */}
+          <Route path="teacher" element={teacher(<TeacherHome />)} />
+          <Route path="teacher/classes/:classId" element={teacher(<TeacherClass />)} />
+          <Route path="teacher/classes/:classId/students/:userId" element={teacher(<TeacherStudent />)} />
+          <Route path="teacher/submissions/:submissionId" element={teacher(<TeacherSubmission />)} />
+          <Route
+            path="admin/users"
+            element={
+              <RequireAdmin>
+                <Page>
+                  <AdminUsers />
+                </Page>
+              </RequireAdmin>
+            }
+          />
+
+          {/* Public */}
           <Route path="lesson-plan" element={<Page><LessonPlan /></Page>} />
           <Route path="playground" element={<Page><Playground /></Page>} />
-          <Route path="settings" element={<Page><Settings /></Page>} />
           <Route path="*" element={<Page><NotFound /></Page>} />
         </Route>
       </Routes>
