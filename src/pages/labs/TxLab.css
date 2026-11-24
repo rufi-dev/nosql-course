@@ -1,0 +1,396 @@
+/* Lab 5 · Two-phase commit and SQL. Prefix: tx- */
+
+.tx-sim .switch {
+  align-items: flex-start;
+  line-height: 1.35;
+}
+.tx-sim .switch input {
+  flex: none;
+  margin-top: 1px;
+}
+.tx-sim .switch input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tx-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--s-3);
+}
+.tx-status .chip:first-child {
+  text-transform: capitalize;
+}
+
+.tx-seqwrap {
+  max-height: 620px;
+  overflow-y: auto;
+  border-radius: var(--r-3);
+  background: var(--paper-2);
+  scrollbar-width: thin;
+}
+.tx-seq {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-sans);
+}
+
+.tx-actor__box {
+  fill: var(--card);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+}
+.tx-actor__stack {
+  fill: var(--paper-3);
+  stroke: var(--line);
+}
+.tx-actor--coord .tx-actor__box {
+  fill: var(--rack);
+  stroke: var(--rack);
+}
+.tx-actor--coord .tx-actor__t {
+  fill: var(--rack-ink);
+}
+.tx-actor--coord .tx-actor__s {
+  fill: var(--mint);
+}
+.tx-actor--coord.is-down .tx-actor__box {
+  fill: var(--coral-wash);
+  stroke: var(--coral);
+}
+.tx-actor--coord.is-down .tx-actor__t,
+.tx-actor--coord.is-down .tx-actor__s {
+  fill: var(--coral-2);
+}
+.tx-actor__t {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 760;
+  font-stretch: 112%;
+}
+.tx-actor__s {
+  fill: var(--ink-3);
+  font-size: 10px;
+}
+
+.tx-life {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 4;
+}
+.tx-life.is-down {
+  stroke: var(--coral);
+  stroke-dasharray: 6 5;
+  opacity: 0.7;
+}
+
+.tx-lock {
+  fill: var(--saffron);
+}
+.tx-lock.is-blocked {
+  fill: var(--coral);
+  animation: tx-blocked 1.2s var(--ease-in-out) infinite alternate;
+}
+@keyframes tx-blocked {
+  to {
+    fill: oklch(0.7 0.15 31);
+  }
+}
+.tx-lock__t {
+  fill: var(--saffron-3);
+  font-size: 10px;
+  font-weight: 700;
+}
+.tx-effect {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.tx-effect--ok {
+  fill: var(--leaf-2);
+}
+.tx-effect--bad {
+  fill: var(--coral-2);
+}
+.tx-effect--warn {
+  fill: var(--coral-2);
+}
+
+.tx-arrow line {
+  stroke-width: 2;
+}
+.tx-arrow--sky line {
+  stroke: var(--sky);
+}
+.tx-arrow--leaf line {
+  stroke: var(--leaf);
+}
+.tx-arrow--coral line {
+  stroke: var(--coral);
+}
+.tx-arrow--ink line {
+  stroke: var(--ink-3);
+}
+.tx-arrow.is-lost line {
+  stroke-dasharray: 5 4;
+  opacity: 0.8;
+}
+.tx-head--sky {
+  fill: var(--sky);
+}
+.tx-head--leaf {
+  fill: var(--leaf);
+}
+.tx-head--coral {
+  fill: var(--coral);
+}
+.tx-head--ink {
+  fill: var(--ink-3);
+}
+.tx-arrow__t {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--ink);
+  stroke: var(--paper-2);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.tx-x {
+  stroke: var(--coral);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.tx-mark text {
+  font-size: 10px;
+  font-weight: 700;
+  stroke: var(--paper-2);
+  stroke-width: 4px;
+  paint-order: stroke;
+}
+.tx-mark--crash circle {
+  fill: var(--coral);
+}
+.tx-mark--crash path {
+  stroke: var(--card);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.tx-mark--crash text {
+  fill: var(--coral-2);
+}
+.tx-mark--recover circle {
+  fill: var(--leaf);
+  stroke: var(--card);
+  stroke-width: 2;
+}
+.tx-mark--recover text {
+  fill: var(--leaf-2);
+}
+.tx-mark--log rect {
+  fill: var(--ink);
+}
+.tx-mark--log text {
+  fill: var(--ink-2);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.tx-mark--raft rect {
+  fill: var(--mint);
+  stroke: var(--rack-2);
+  stroke-width: 1;
+}
+.tx-mark--raft text {
+  fill: var(--rack-2);
+}
+.tx-break rect {
+  fill: var(--coral-wash);
+}
+.tx-break text {
+  fill: var(--coral-2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tx-readouts {
+  margin-top: var(--s-4);
+}
+
+.tx-cost {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.tx-table th,
+.tx-table td {
+  padding: 10px 12px;
+  font-size: var(--t-xs);
+}
+
+.tx-newsql .lk-h p {
+  max-width: 78ch;
+  line-height: 1.6;
+}
+
+.tx-sql__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-5);
+  align-items: start;
+}
+.tx-sql__code {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.tx-sql__code .code {
+  max-height: 420px;
+}
+
+.tx-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-width: 0;
+}
+.tx-step__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tx-step__stmt {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: var(--card);
+  text-align: left;
+  transition:
+    border-color var(--d-fast) var(--ease-out),
+    background-color var(--d-fast) var(--ease-out);
+}
+.tx-step__stmt code {
+  padding: 0;
+  background: none;
+  font-size: 0.72rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tx-step__stmt:hover {
+  border-color: var(--ink-3);
+}
+.tx-step__stmt.is-past {
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.tx-step__stmt.is-on {
+  border-color: var(--rack-2);
+  background: var(--rack);
+  color: var(--rack-ink);
+}
+.tx-step__stmt.is-on code {
+  color: var(--rack-ink);
+}
+.tx-step__n {
+  font-family: var(--font-mono);
+  font-size: var(--t-2xs);
+  color: var(--ink-3);
+}
+.tx-step__stmt.is-on .tx-step__n {
+  color: var(--mint);
+}
+
+.tx-step__state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--card);
+}
+.tx-sessions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.tx-session {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: var(--r-2);
+  background: var(--paper-2);
+  font-size: var(--t-sm);
+}
+.tx-session__l {
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tx-session__v strong {
+  font-family: var(--font-mono);
+}
+.tx-session__v em {
+  color: var(--ink-3);
+  font-style: normal;
+}
+.tx-step__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+  font-size: var(--t-xs);
+}
+.tx-step__meta ul {
+  margin: 4px 0 0;
+  padding-left: 1.1em;
+  line-height: 1.5;
+}
+.tx-step__meta ul.mono {
+  font-size: 0.7rem;
+}
+.tx-step__h {
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tx-step__note {
+  padding: 10px 12px;
+  border-radius: var(--r-2);
+  background: var(--sky-wash);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .tx-sql__grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .tx-sessions,
+  .tx-step__meta {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,349 @@
+/* Lab 3 · Replica lag and partitions. Prefix: rep- */
+
+.rep-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--s-3);
+}
+
+.rep-map {
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  border-radius: var(--r-3);
+  background: var(--paper-2);
+  font-family: var(--font-sans);
+}
+.rep-sea {
+  fill: var(--sky-wash);
+}
+.rep-sea__t {
+  fill: oklch(0.6 0.06 245);
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 0.08em;
+}
+
+.rep-link {
+  stroke: var(--line-strong);
+  stroke-width: 2;
+  transition:
+    stroke var(--d-med) var(--ease-out),
+    opacity var(--d-med) var(--ease-out);
+}
+.rep-link.is-client {
+  stroke-dasharray: 3 4;
+  stroke-width: 1.5;
+}
+.rep-link.is-cut {
+  stroke: var(--coral);
+  stroke-dasharray: 2 6;
+  opacity: 0.55;
+}
+.rep-cut {
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 2.5;
+  stroke-dasharray: 9 7;
+  stroke-linecap: round;
+}
+.rep-cut__t {
+  fill: var(--coral-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rep-client rect {
+  fill: var(--card);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+  transition:
+    stroke var(--d-fast) var(--ease-out),
+    stroke-width var(--d-fast) var(--ease-out);
+}
+.rep-client.is-active rect {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.rep-client__t {
+  fill: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+.rep-client__s {
+  fill: var(--ink-3);
+  font-size: 9px;
+}
+
+.rep-node__body {
+  stroke: var(--paper-2);
+  stroke-width: 4;
+  transition: fill 500ms var(--ease-out);
+}
+.rep-node--primary .rep-node__body {
+  fill: var(--saffron);
+}
+.rep-node--secondary .rep-node__body {
+  fill: var(--rack-2);
+}
+.rep-node--candidate .rep-node__body {
+  fill: var(--sky);
+  animation: rep-candidate 0.9s var(--ease-in-out) infinite alternate;
+}
+@keyframes rep-candidate {
+  to {
+    fill: oklch(0.68 0.12 248);
+  }
+}
+.rep-node__code {
+  font-size: 14px;
+  font-weight: 800;
+  font-stretch: 120%;
+  fill: var(--rack-ink);
+}
+.rep-node__val {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  fill: var(--rack-ink-2);
+}
+.rep-node--primary .rep-node__code {
+  fill: oklch(0.27 0.05 70);
+}
+.rep-node--primary .rep-node__val {
+  fill: oklch(0.35 0.06 70);
+}
+.rep-node__role {
+  fill: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.rep-node__warn {
+  fill: var(--coral-2);
+  font-size: 10px;
+  font-weight: 700;
+}
+.rep-countdown {
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.rep-op rect {
+  stroke-width: 1.2;
+}
+.rep-op text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+}
+.rep-op.is-committed rect {
+  fill: var(--leaf-wash);
+  stroke: var(--leaf);
+}
+.rep-op.is-committed text {
+  fill: var(--leaf-2);
+}
+.rep-op.is-local rect {
+  fill: var(--saffron-wash);
+  stroke: var(--saffron-2);
+}
+.rep-op.is-local text {
+  fill: oklch(0.42 0.1 65);
+}
+.rep-op.is-rolled rect {
+  fill: var(--coral-wash);
+  stroke: var(--coral);
+}
+.rep-op.is-rolled text {
+  fill: var(--coral-2);
+}
+
+.rep-pk {
+  stroke: var(--card);
+  stroke-width: 1.5;
+}
+.rep-pk--write {
+  fill: var(--saffron-2);
+}
+.rep-pk--oplog {
+  fill: var(--saffron);
+}
+.rep-pk--ack {
+  fill: var(--leaf);
+}
+.rep-pk--read {
+  fill: var(--sky);
+}
+.rep-lost path {
+  stroke: var(--coral);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.rep-legend {
+  margin-top: var(--s-3);
+}
+.rep-lg-box {
+  border-radius: 3px !important;
+}
+.rep-lg-box--c {
+  background: var(--leaf-wash);
+  box-shadow: inset 0 0 0 1.2px var(--leaf);
+}
+.rep-lg-box--l {
+  background: var(--saffron-wash);
+  box-shadow: inset 0 0 0 1.2px var(--saffron-2);
+}
+
+.rep-cards {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+.rep-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--card);
+  transition:
+    background-color var(--d-med) var(--ease-out),
+    border-color var(--d-med) var(--ease-out);
+}
+.rep-card.is-stale {
+  border-color: var(--coral);
+  background: var(--coral-wash);
+}
+.rep-card.is-dirty {
+  border-color: var(--saffron-2);
+  background: var(--saffron-wash);
+}
+.rep-card.is-fresh {
+  border-color: oklch(0.8 0.07 160);
+  background: var(--leaf-wash);
+}
+.rep-card__empty {
+  font-size: var(--t-sm);
+}
+.rep-writes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rep-writes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-xs);
+}
+.rep-writes__v {
+  min-width: 2ch;
+  font-size: var(--t-md);
+  font-weight: 780;
+}
+.rep-read {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.rep-read__v {
+  font-size: 2.4rem;
+  font-weight: 800;
+  font-stretch: 116%;
+  line-height: 1;
+}
+.rep-card.is-stale .rep-read__v {
+  color: var(--coral-2);
+}
+.rep-read__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+}
+.rep-read__meta strong {
+  color: var(--ink);
+  font-size: var(--t-sm);
+}
+.rep-read__wait {
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.rep-members {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.rep-role {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 99px;
+  font-size: var(--t-xs);
+  font-weight: 650;
+}
+.rep-role--primary {
+  background: var(--saffron-wash);
+  color: oklch(0.42 0.1 65);
+}
+.rep-role--secondary {
+  background: var(--paper-3);
+  color: var(--ink-2);
+}
+.rep-role--candidate {
+  background: var(--sky-wash);
+  color: var(--sky-2);
+}
+
+.rep-cap__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}
+.rep-cap__side {
+  padding: var(--s-5);
+  border-radius: var(--r-3);
+}
+.rep-cap__side h3 {
+  font-size: var(--t-md);
+  font-weight: 760;
+}
+.rep-cap__side ul {
+  margin: 10px 0 0;
+  padding-left: 1.1em;
+  font-size: var(--t-sm);
+  line-height: 1.6;
+}
+.rep-cap__side--minority {
+  background: var(--coral-wash);
+}
+.rep-cap__side--majority {
+  background: var(--leaf-wash);
+}
+.rep-cap__note {
+  max-width: 76ch;
+  margin-top: var(--s-4);
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .rep-cards,
+  .rep-cap__grid {
+    grid-template-columns: 1fr;
+  }
+}

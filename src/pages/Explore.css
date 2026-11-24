@@ -1,0 +1,545 @@
+.exp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.exp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+.exp-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(300px, 100%);
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+}
+.exp-progress__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+}
+.exp-progress strong {
+  color: var(--ink);
+}
+
+.exp-stage {
+  position: relative;
+  padding: var(--s-3);
+  overflow: hidden;
+  background: var(--paper-2);
+}
+.exp-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.exp-diagram {
+  position: relative;
+  min-width: 640px;
+}
+.exp-svg {
+  width: 100%;
+  height: auto;
+  font-family: var(--font-sans);
+}
+.exp-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 0 6px 4px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.exp-hint svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--sky);
+}
+
+/* SVG vocabulary */
+.exp-node {
+  fill: var(--card);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+  transition:
+    stroke var(--d-med) var(--ease-out),
+    fill var(--d-med) var(--ease-out);
+}
+.exp-node--ghost {
+  fill: var(--paper-3);
+  stroke: var(--line);
+}
+.exp-node--router {
+  stroke: var(--saffron-2);
+  stroke-width: 1.5;
+}
+.exp-node.is-active {
+  fill: var(--saffron-wash);
+  stroke: var(--saffron-3);
+  stroke-width: 2;
+}
+.exp-shard {
+  fill: oklch(0.31 0.048 183 / 0.05);
+  stroke: var(--shard-a);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 6;
+}
+.exp-shard--b {
+  stroke: var(--shard-b);
+}
+.exp-shardlabel {
+  font-size: 12px;
+  font-weight: 760;
+  font-stretch: 122%;
+  letter-spacing: 0.1em;
+  fill: var(--ink-2);
+}
+.exp-prim {
+  fill: var(--card);
+  stroke: var(--saffron-2);
+  stroke-width: 1.6;
+}
+.exp-sec {
+  fill: var(--card);
+  stroke: oklch(0.53 0.12 160 / 0.6);
+  stroke-width: 1.3;
+}
+.exp-faded {
+  opacity: 0.45;
+  transition: opacity var(--d-slow) var(--ease-out);
+}
+.exp-title {
+  font-size: 15px;
+  font-weight: 760;
+  font-stretch: 112%;
+  fill: var(--ink);
+}
+.exp-label {
+  font-size: 13px;
+  font-weight: 680;
+  fill: var(--ink);
+}
+.exp-role {
+  font-size: 10.5px;
+  font-weight: 800;
+  font-stretch: 122%;
+  letter-spacing: 0.12em;
+  fill: var(--leaf-2);
+}
+.exp-role--primary {
+  fill: var(--saffron-3);
+}
+.exp-mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  fill: var(--ink);
+}
+.exp-mono--sm {
+  font-size: 11px;
+  fill: var(--ink-2);
+}
+.exp-faint {
+  fill: var(--ink-3);
+}
+.exp-saffron {
+  fill: var(--saffron-3);
+  font-weight: 700;
+}
+.exp-center {
+  text-anchor: middle;
+}
+.exp-chip {
+  fill: var(--paper-3);
+  stroke: var(--line-strong);
+}
+.exp-dot {
+  fill: var(--leaf);
+}
+.exp-dot--p {
+  fill: var(--saffron-2);
+}
+.exp-edge {
+  stroke: var(--line-strong);
+  stroke-width: 1.4;
+}
+.exp-bnode {
+  fill: var(--paper-2);
+  stroke: var(--line-strong);
+  transition:
+    fill var(--d-med) var(--ease-out),
+    stroke var(--d-med) var(--ease-out);
+}
+.exp-bnode.is-hit {
+  fill: var(--saffron);
+  stroke: var(--saffron-3);
+}
+.exp-hit {
+  font-weight: 700;
+}
+.exp-store {
+  fill: var(--paper-2);
+  stroke: var(--line);
+}
+.exp-docsq {
+  fill: var(--card);
+  stroke: var(--line-strong);
+}
+.exp-oplog {
+  fill: var(--code-bg);
+}
+.exp-oplog + text {
+  fill: var(--code-ink-2);
+}
+.exp-opentry {
+  fill: oklch(1 0 0 / 0.14);
+}
+.exp-opentry.is-new {
+  fill: var(--saffron);
+}
+.exp-wire {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.6;
+  transition:
+    stroke var(--d-med) var(--ease-out),
+    opacity var(--d-med) var(--ease-out);
+}
+.exp-wire--meta {
+  stroke-dasharray: 4 5;
+}
+.exp-wire.is-hl {
+  stroke: var(--saffron-2);
+  stroke-width: 2.4;
+}
+.exp-wire.is-dim {
+  opacity: 0.25;
+}
+.exp-repl {
+  fill: none;
+  stroke: var(--leaf);
+  stroke-width: 1.4;
+  stroke-dasharray: 5 5;
+  animation: exp-flow 1.4s linear infinite;
+}
+@keyframes exp-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+.exp-arrowhead {
+  fill: var(--ink-3);
+}
+.exp-arrowhead--hl {
+  fill: var(--saffron-2);
+}
+.exp-hl {
+  fill: oklch(0.83 0.155 82 / 0.1);
+  stroke: var(--saffron-2);
+  stroke-width: 2.5;
+  animation: exp-hl-in 600ms var(--ease-expo) both;
+  pointer-events: none;
+}
+@keyframes exp-hl-in {
+  from {
+    opacity: 0;
+    stroke-width: 10;
+  }
+  to {
+    opacity: 1;
+    stroke-width: 2.5;
+  }
+}
+.exp-packet {
+  fill: var(--saffron-2);
+  stroke: var(--card);
+  stroke-width: 2;
+}
+.exp-packet-glow {
+  fill: oklch(0.76 0.16 72 / 0.25);
+}
+.exp-result {
+  fill: var(--leaf);
+}
+.exp-resulttext {
+  font-size: 12.5px;
+  font-weight: 700;
+  fill: var(--card);
+}
+
+/* Hotspot markers (HTML buttons over the SVG) */
+.exp-marker {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  padding: 0;
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  background: var(--rack);
+  color: var(--rack-ink);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 8px oklch(0.24 0.028 182 / 0.3);
+  transition:
+    transform var(--d-med) var(--ease-out),
+    background-color var(--d-med) var(--ease-out),
+    color var(--d-med) var(--ease-out);
+}
+.exp-marker::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--saffron);
+  opacity: 0;
+  animation: exp-ping 2.4s var(--ease-out) infinite;
+}
+.exp-marker.is-seen {
+  background: var(--leaf);
+}
+.exp-marker.is-seen::before {
+  animation: none;
+}
+.exp-marker:hover {
+  transform: scale(1.12);
+}
+.exp-marker.is-on {
+  background: var(--saffron);
+  color: oklch(0.24 0.04 70);
+  transform: scale(1.18);
+}
+@keyframes exp-ping {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.7);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Panel: docked inside the empty lower-left corner of the diagram when
+   there is room (like an H5P hotspot popup), otherwise placed below it. */
+.exp-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+.exp-panel--overlay {
+  position: absolute;
+  z-index: 3;
+  left: 1.2%;
+  top: 52.5%;
+  bottom: 1.2%;
+  width: 41%;
+  padding: 16px 18px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-3);
+  scrollbar-width: thin;
+}
+.exp-panel--below {
+  padding: var(--s-5);
+}
+.exp-panel__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.exp-panel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+}
+.exp-count {
+  font-size: var(--t-2xs);
+  font-weight: 720;
+  font-stretch: 120%;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sky-2);
+}
+.exp-panel__nav,
+.exp-tracectl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.exp-panel__title {
+  font-size: 1.2rem;
+  font-weight: 780;
+  font-stretch: 114%;
+  line-height: 1.15;
+}
+.exp-panel__body {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.exp-why {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-2);
+  background: var(--saffron-wash);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.exp-why > svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: var(--saffron-3);
+}
+.exp-why strong {
+  font-weight: 700;
+}
+.exp-query {
+  display: block;
+  padding: 8px 12px;
+  border-radius: var(--r-2);
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-size: 0.78rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.exp-keyrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.exp-keyrow .segmented button[aria-checked='true'] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+.exp-keyrow .label {
+  font-size: var(--t-xs);
+}
+.exp-stepcard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--r-2);
+  background: var(--paper-2);
+}
+.exp-stepcard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.exp-stepcard__n {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  color: var(--ink);
+}
+.exp-stepcard__text {
+  min-height: 3em;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.exp-stepcard__text strong {
+  color: var(--ink);
+}
+.exp-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.exp-dots span {
+  width: 18px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--line);
+  transition: background-color var(--d-med) var(--ease-out);
+}
+.exp-dots span.is-past {
+  background: var(--leaf);
+}
+.exp-dots span.is-on {
+  background: var(--saffron-2);
+}
+
+/* Text alternative */
+.exp-alt {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--card);
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.exp-alt summary {
+  font-weight: 640;
+  color: var(--ink);
+  cursor: pointer;
+}
+.exp-alt ol {
+  margin: 10px 0 2px;
+  padding-left: 1.3em;
+  line-height: 1.6;
+}
+
+.exp-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  max-width: 760px;
+}
+.exp-check__title {
+  font-size: var(--t-xl);
+  font-weight: 780;
+  font-stretch: 114%;
+}
+
+@media (max-width: 560px) {
+  .exp-panel--below {
+    padding: var(--s-4);
+  }
+  .exp-marker {
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    font-size: 11px;
+  }
+}
+
+.exp-scrollhint {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: calc(var(--s-3) * -1);
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.exp-scrollhint svg {
+  width: 14px;
+  height: 14px;
+}
+@media (max-width: 720px) {
+  .exp-scrollhint {
+    display: flex;
+  }
+}

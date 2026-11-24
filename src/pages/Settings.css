@@ -1,0 +1,36 @@
+.settings {
+  max-width: 880px;
+}
+.set-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--s-6) 0;
+  border-top: 1px solid var(--line);
+}
+.set-sec__head h2 {
+  font-size: var(--t-md);
+  font-weight: 760;
+  font-stretch: 112%;
+}
+.set-sec__head p {
+  margin-top: 4px;
+  font-size: var(--t-sm);
+}
+.set-sec .input {
+  max-width: 420px;
+}
+.set-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--r-3);
+  background: var(--coral-wash);
+  color: var(--coral-2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+.set-sec--danger .btn--danger {
+  align-self: flex-start;
+}

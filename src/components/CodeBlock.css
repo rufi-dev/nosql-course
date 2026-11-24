@@ -1,0 +1,52 @@
+.codeblock {
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--r-3);
+  background: var(--code-bg);
+}
+.codeblock .code {
+  border-radius: 0;
+}
+.codeblock__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 16px;
+  border-bottom: 1px solid var(--code-line);
+  background: var(--code-bg-2);
+}
+.codeblock__title {
+  font-family: var(--font-mono);
+  font-size: var(--t-2xs);
+  letter-spacing: 0.04em;
+  color: var(--code-ink-2);
+}
+.codeblock__actions {
+  display: inline-flex;
+  gap: 4px;
+}
+.codeblock__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--code-ink-2);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  transition:
+    background-color var(--d-fast) var(--ease-out),
+    color var(--d-fast) var(--ease-out);
+}
+.codeblock__btn:hover {
+  background: oklch(1 0 0 / 0.07);
+  color: var(--code-ink);
+}
+.codeblock__btn svg {
+  width: 14px;
+  height: 14px;
+}

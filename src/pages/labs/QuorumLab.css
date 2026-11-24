@@ -1,0 +1,300 @@
+/* Lab 4 · Quorums. Prefix: quo- */
+
+.quo-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.quo-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: var(--card);
+  font-size: var(--t-xs);
+  font-weight: 680;
+  text-align: left;
+  transition:
+    border-color var(--d-fast) var(--ease-out),
+    background-color var(--d-fast) var(--ease-out);
+}
+.quo-preset:hover {
+  border-color: var(--ink-3);
+}
+.quo-preset code {
+  padding: 0;
+  background: none;
+  color: var(--ink-3);
+  font-size: 0.68rem;
+}
+.quo-preset.is-on {
+  border-color: var(--rack-2);
+  background: var(--rack);
+  color: var(--rack-ink);
+}
+.quo-preset.is-on code {
+  color: var(--mint);
+}
+
+.quo-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.quo-noderow {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.quo-noderow__name {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+.quo-noderow .segmented {
+  display: flex;
+}
+.quo-noderow .segmented button {
+  flex: 1;
+  min-height: 28px;
+  padding: 0 4px;
+}
+
+.quo-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.quo-ineq {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 14px 18px;
+  border-radius: var(--r-3);
+  transition: background-color var(--d-med) var(--ease-out);
+}
+.quo-ineq.is-ok {
+  background: var(--leaf-wash);
+}
+.quo-ineq.is-risk {
+  background: var(--coral-wash);
+}
+.quo-ineq__math {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--t-xl);
+  font-weight: 760;
+  font-stretch: 116%;
+}
+.quo-ineq__math strong {
+  display: inline-block;
+  font-weight: 820;
+}
+.quo-ineq__op {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.quo-ineq__cmp {
+  padding: 0 4px;
+  font-weight: 820;
+}
+.quo-ineq.is-ok .quo-ineq__cmp {
+  color: var(--leaf-2);
+}
+.quo-ineq.is-risk .quo-ineq__cmp {
+  color: var(--coral-2);
+}
+.quo-ineq p {
+  flex: 1 1 260px;
+  font-size: var(--t-sm);
+  line-height: 1.5;
+}
+
+.quo-ring {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  align-self: center;
+  overflow: visible;
+  font-family: var(--font-sans);
+}
+.quo-orbit {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 5;
+}
+.quo-arc {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: d 500ms var(--ease-out);
+}
+.quo-arc--w {
+  stroke: var(--saffron-2);
+  opacity: 0.85;
+}
+.quo-arc--r {
+  stroke: var(--sky);
+  opacity: 0.8;
+}
+.quo-arc__t {
+  font-size: 12px;
+  font-weight: 800;
+  font-stretch: 116%;
+}
+.quo-arc__t--w {
+  fill: var(--saffron-3);
+}
+.quo-arc__t--r {
+  fill: var(--sky-2);
+}
+.quo-spoke {
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+}
+.quo-spoke.is-down {
+  stroke: var(--coral);
+  stroke-dasharray: 2 5;
+  opacity: 0.6;
+}
+
+.quo-coord circle {
+  fill: var(--rack);
+}
+.quo-coord__t {
+  fill: var(--rack-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+.quo-coord__s {
+  fill: var(--mint);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+}
+
+.quo-node__body {
+  fill: var(--rack-2);
+  stroke: var(--paper);
+  stroke-width: 3;
+  transition: fill var(--d-med) var(--ease-out);
+}
+.quo-node__name {
+  fill: var(--rack-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+.quo-node__v {
+  fill: var(--rack-ink-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.quo-node.is-stale .quo-node__v {
+  fill: var(--saffron);
+}
+.quo-node.is-lagging .quo-node__body {
+  fill: var(--saffron-wash);
+  stroke: var(--saffron-2);
+  stroke-dasharray: 4 3;
+}
+.quo-node.is-lagging .quo-node__name {
+  fill: oklch(0.38 0.08 65);
+}
+.quo-node.is-lagging .quo-node__v {
+  fill: oklch(0.45 0.1 65);
+}
+.quo-node.is-down .quo-node__body {
+  fill: var(--paper-3);
+  stroke: var(--coral);
+  stroke-dasharray: 3 3;
+}
+.quo-node.is-down .quo-node__name,
+.quo-node.is-down .quo-node__v {
+  fill: var(--coral-2);
+}
+.quo-node__overlap {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 3;
+}
+.quo-node__read {
+  fill: none;
+  stroke: var(--sky);
+  stroke-width: 3;
+}
+.quo-node__ack {
+  fill: none;
+  stroke: var(--leaf);
+  stroke-width: 3;
+}
+
+.quo-pk {
+  stroke: var(--card);
+  stroke-width: 1.5;
+}
+.quo-pk.is-w {
+  fill: var(--saffron-2);
+}
+.quo-pk.is-ack {
+  fill: var(--leaf);
+}
+.quo-pk.is-r {
+  fill: var(--sky);
+}
+.quo-lg-overlap {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.quo-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-width: 0;
+}
+.quo-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}
+.quo-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--card);
+  font-size: var(--t-sm);
+  transition:
+    background-color var(--d-med) var(--ease-out),
+    border-color var(--d-med) var(--ease-out);
+}
+.quo-result.is-ok {
+  border-color: oklch(0.8 0.07 160);
+  background: var(--leaf-wash);
+}
+.quo-result.is-bad {
+  border-color: oklch(0.82 0.08 30);
+  background: var(--coral-wash);
+}
+.quo-table {
+  margin-top: var(--s-2);
+}
+
+@media (max-width: 520px) {
+  .quo-results {
+    grid-template-columns: 1fr;
+  }
+  .quo-ineq__math {
+    font-size: var(--t-lg);
+  }
+}
