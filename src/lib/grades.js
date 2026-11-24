@@ -1,5 +1,5 @@
 import { COURSE, LABS } from '../data/course.js'
-import { labProgress } from '../store.js'
+import { labProgress } from './progress.js'
 
 // Derives the learner's grade report from store state.
 // Each item: { key, label, weight, status, pct (0-100 or null when not started) }

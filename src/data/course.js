@@ -329,49 +329,57 @@ export const ACTIVITIES = [
 export const ACTIVITY_GROUPS = ['Begin', 'Learn', 'Practise', 'Check', 'Apply', 'Discuss', 'Reflect']
 
 // Stage gating. A stage opens only when every activity in all earlier stages is
-// finished, or when the teacher opens it early (on their device, or by sharing
-// the class code so students can enter it on theirs). Inside a stage the order
-// is free. Change the codes before each run of the course.
+// finished, or when the class teacher opens it early from the dashboard. The
+// server enforces this per class; inside a stage the order is free.
 export const STAGES = [
   {
     id: 'begin',
     title: 'Begin',
     lead: 'The situation and a warm-up.',
     activities: ['start'],
-    code: null,
   },
   {
     id: 'learn',
     title: 'Learn',
     lead: 'Two lectures, the reading and the cluster diagram.',
     activities: ['lecture-1', 'lecture-2', 'reading', 'explore'],
-    code: 'LEARN-24',
   },
   {
     id: 'practise',
     title: 'Practise',
     lead: 'Five browser labs.',
     activities: ['lab-shell', 'lab-shard', 'lab-replicas', 'lab-quorum', 'lab-tx'],
-    code: 'LABS-57',
   },
   {
     id: 'apply',
     title: 'Check and apply',
     lead: 'Quiz, assignment, peer review and discussion.',
     activities: ['quiz', 'assignment', 'workshop', 'discussion'],
-    code: 'APPLY-83',
   },
   {
     id: 'reflect',
     title: 'Reflect',
     lead: 'Summary, self-assessment and feedback.',
     activities: ['wrap-up'],
-    code: 'WRAP-16',
   },
 ]
 
 export const stageById = (id) => STAGES.find((s) => s.id === id)
 export const stageOfActivity = (activityId) => STAGES.find((s) => s.activities.includes(activityId))
+
+// Facts the server needs to validate manual completions.
+export const LECTURE_BUCKET = 5 // seconds of actual playback per coverage bucket
+export const READING_CHAPTER_IDS = [
+  'design-problem',
+  'models',
+  'identity',
+  'operations',
+  'partitioning',
+  'cap',
+  'worked-example',
+  'pitfalls',
+]
+export const HOTSPOT_IDS = ['app', 'mongos', 'config', 'shard', 'primary', 'index', 'storage', 'oplog', 'secondary']
 
 // What "finished" means for activities a learner marks done themselves.
 export const COMPLETION_RULES = {
