@@ -28,6 +28,7 @@ The structure follows the *Design of Adaptive Systems* MOOC reference (course ho
 - They submit the assignment, review three classmates (sample submissions fill in when the class is small), discuss in the class forum, and see their grades, badges and a printable certificate.
 
 ### Teachers
+- Create their own account: choose **Teacher** on the sign-up page (or open `/signup?as=teacher`). Each teacher sees only their own classes.
 - Create classes, each with a private join code that can be regenerated at any time.
 - See the class list: every student's progress per stage, current activity, quiz, submission and grade. A chart shows where students stop.
 - Open a stage for the whole class at once (dashboard or lesson plan page). Students' screens update within a minute.
@@ -36,7 +37,9 @@ The structure follows the *Design of Adaptive Systems* MOOC reference (course ho
 - Preview the whole course with everything unlocked. Nothing is saved in preview.
 
 ### Admin
-The account that signs up with `ADMIN_EMAIL` becomes the admin teacher, and can make other accounts teachers on **Users and roles**. Teachers sign up without a class code, then the admin promotes them.
+The account that signs up with `ADMIN_EMAIL` becomes the admin teacher. The admin can change anyone's role on **Users and roles**.
+
+Teacher sign-up is open by default, so testers can each create a teacher account, make a class and register students with its code. To stop new teacher accounts (for example once real students use the site), set `TEACHER_SIGNUP=closed`; the admin then makes teachers on **Users and roles**.
 
 ## Security model
 - **Passwords:** hashed with scrypt.
@@ -92,6 +95,7 @@ Environment variables:
 |---|---|---|
 | `DATABASE_URL` | yes | Set by the Blueprint from the linked database. |
 | `ADMIN_EMAIL` | yes | This account becomes the admin teacher on sign-up. |
+| `TEACHER_SIGNUP` | no | `open` (default): anyone can create a teacher account. `closed`: only the admin can make teachers. |
 | `DATABASE_SSL` | no | Set to `true` only when connecting through an external URL that requires TLS. |
 | `PORT` | no | Set by Render. |
 

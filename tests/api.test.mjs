@@ -9,6 +9,7 @@ process.env.NODE_ENV = 'test'
 
 const { createApp } = await import('../server/index.js')
 const { migrate, pool } = await import('../server/db.js')
+const { config } = await import('../server/config.js')
 
 let server
 let base
@@ -307,6 +308,46 @@ test('regenerating the join code invalidates the old one', async () => {
   const c = new Client()
   const bad = await c.post('/api/auth/signup', { name: 'Late', email: 'late@test.local', password: 'password123', joinCode })
   assert.equal(bad.status, 400)
+})
+
+test('anyone can create a teacher account and run their own class', async () => {
+  assert.equal((await new Client().get('/api/auth/options')).body.teacherSignup, true)
+  const t3 = new Client()
+  const r = await t3.post('/api/auth/signup', {
+    name: 'Tess Tester',
+    email: 'tess@test.local',
+    password: 'password123',
+    accountType: 'teacher',
+    joinCode: 'ZZZZ-ZZZZ', // ignored for teachers
+  })
+  assert.equal(r.status, 201)
+  assert.equal(r.body.user.role, 'teacher')
+  const c = await t3.post('/api/teacher/classes', { name: 'Test group' })
+  assert.equal(c.status, 201)
+  // A student signs up with the new code and appears in this teacher's class list only.
+  const st = new Client()
+  const s = await st.post('/api/auth/signup', {
+    name: 'Stu',
+    email: 'stu@test.local',
+    password: 'password123',
+    accountType: 'student',
+    joinCode: c.body.class.joinCode,
+  })
+  assert.equal(s.status, 201)
+  assert.equal(s.body.user.role, 'student')
+  const o = await t3.get(`/api/teacher/classes/${c.body.class.id}/overview`)
+  assert.deepEqual(o.body.students.map((x) => x.name), ['Stu'])
+  assert.equal((await t3.get(`/api/teacher/classes/${classId}/overview`)).status, 403, 'classes of other teachers stay private')
+  assert.equal((await t3.get('/api/admin/users')).status, 403, 'self-made teachers are not admins')
+  // TEACHER_SIGNUP=closed turns it off.
+  config.teacherSignup = false
+  try {
+    const closed = await new Client().post('/api/auth/signup', { name: 'No', email: 'no@test.local', password: 'password123', accountType: 'teacher' })
+    assert.equal(closed.status, 403)
+    assert.equal((await new Client().get('/api/auth/options')).body.teacherSignup, false)
+  } finally {
+    config.teacherSignup = true
+  }
 })
 
 test('mutations require JSON (no cross-site form posts)', async () => {

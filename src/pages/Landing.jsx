@@ -283,7 +283,7 @@ export default function Landing() {
               ['Format', `${COURSE.format.pace}. ${COURSE.format.weekly}. ${COURSE.format.session}.`],
               ['Language', COURSE.format.language],
               ['Tools', `${COURSE.format.tools} Optional real databases: DB AI MongoDB Playground and DB Fiddle.`],
-              ['Your account', 'Sign up with the class code from your teacher. Progress, quiz results and submissions are saved to your account; your teacher sees your progress, opens stages for the class and grades your assignment.'],
+              ['Your account', 'Sign up with the class code from your teacher. Progress, quiz results and submissions are saved to your account; your teacher sees your progress, opens stages for the class and grades your assignment. Teachers create their own account and get a join code for each class.'],
             ].map(([k, v]) => (
               <div className="manifest__row" key={k}>
                 <dt>{k}</dt>

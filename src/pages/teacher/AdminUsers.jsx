@@ -80,7 +80,8 @@ export default function AdminUsers() {
           <div className="kicker">Admin</div>
           <h1 className="td-title">Users and roles</h1>
           <p className="td-sub">
-            Everyone signs up as a student. Make colleagues teachers here so they can create classes. Admins can also manage roles.
+            Teachers can create their own accounts on the sign-up page. Change anyone's role here, for example to make a colleague
+            an admin.
           </p>
         </div>
       </header>

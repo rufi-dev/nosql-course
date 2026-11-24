@@ -10,6 +10,9 @@ export const config = {
   databaseSsl: env.DATABASE_SSL === 'true',
   // The account that signs up with this email becomes the admin teacher.
   adminEmail: (env.ADMIN_EMAIL || '').trim().toLowerCase(),
+  // Anyone can create a teacher account unless TEACHER_SIGNUP=closed.
+  // Teachers only ever see their own classes, so this is safe to leave open.
+  teacherSignup: (env.TEACHER_SIGNUP || 'open').trim().toLowerCase() !== 'closed',
   sessionDays: 30,
 }
 

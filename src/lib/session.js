@@ -64,8 +64,10 @@ export const useSession = create((set, get) => ({
   async login(email, password) {
     await get().apply(await api.post('/api/auth/login', { email, password }))
   },
-  async signup({ name, email, password, joinCode }) {
-    await get().apply(await api.post('/api/auth/signup', { name, email, password, joinCode }))
+  async signup({ name, email, password, joinCode, accountType = 'student' }) {
+    const body = { name, email, password, accountType }
+    if (accountType === 'student') body.joinCode = joinCode
+    await get().apply(await api.post('/api/auth/signup', body))
   },
   async logout() {
     await flush().catch(() => {})

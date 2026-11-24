@@ -70,12 +70,26 @@ async function findClassByCode(code) {
   return one('SELECT id, name, archived FROM classes WHERE join_code = $1', [c])
 }
 
+// What the sign-up page may offer.
+router.get('/options', (_req, res) => {
+  res.json({ teacherSignup: config.teacherSignup })
+})
+
 router.post('/signup', async (req, res) => {
   const body = parse(
-    z.object({ name, email, password, joinCode: z.string().trim().max(20).optional().or(z.literal('')) }),
+    z.object({
+      name,
+      email,
+      password,
+      accountType: z.enum(['student', 'teacher']).optional(),
+      joinCode: z.string().trim().max(20).optional().or(z.literal('')),
+    }),
     req.body,
   )
-  const role = config.adminEmail && body.email === config.adminEmail ? 'admin' : 'student'
+  const isAdmin = Boolean(config.adminEmail) && body.email === config.adminEmail
+  if (body.accountType === 'teacher' && !isAdmin && !config.teacherSignup)
+    throw new HttpError(403, 'teacher_signup_closed', 'Teacher sign-up is closed. Ask the course admin for a teacher account.')
+  const role = isAdmin ? 'admin' : body.accountType === 'teacher' ? 'teacher' : 'student'
 
   let cls = null
   if (role === 'student' && body.joinCode) {

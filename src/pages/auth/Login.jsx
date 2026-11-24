@@ -44,6 +44,8 @@ export default function Login() {
         <>
           New here? <Link to={`/signup${next ? `?next=${encodeURIComponent(next)}` : ''}`}>Create an account</Link> with the
           class code from your teacher.
+          <br />
+          Teaching? <Link to="/signup?as=teacher">Create a teacher account</Link>.
         </>
       }
     >

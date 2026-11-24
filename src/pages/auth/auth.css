@@ -217,3 +217,41 @@
     max-width: none;
   }
 }
+
+/* Student / teacher choice on sign-up */
+.auth__role {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.auth__role legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+.auth__seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  padding: 4px;
+  border-radius: 12px;
+}
+.auth__seg button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border-radius: 9px;
+  font-size: var(--t-sm);
+}
+.auth__seg button svg {
+  width: 16px;
+  height: 16px;
+}
+.auth__seg button[aria-pressed='true'] svg {
+  color: var(--rack);
+}
