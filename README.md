@@ -51,7 +51,7 @@ Limitation: the labs run in the student's browser, so a determined student could
 
 ## Run locally
 
-Requirements: Node.js 22 or newer. You do **not** need to install PostgreSQL: `npm run dev:db` downloads and runs an embedded one (data in `.local-pg/`).
+Requirements: Node.js 22.12 or newer (24 recommended; Render uses 24). You do **not** need to install PostgreSQL: `npm run dev:db` downloads and runs an embedded one (data in `.local-pg/`).
 
 ```bash
 npm install

@@ -41,6 +41,6 @@
   },
   "description": "NoSQL, NewSQL and Distributed Architectures: interactive course platform (React + Express + PostgreSQL).",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   }
 }
