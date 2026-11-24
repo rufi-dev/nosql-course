@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n db,api,web -c gray,blue,magenta \"npm:dev:db\" \"npm:dev:api\" \"npm:dev:web\"",
     "dev:db": "node scripts/dev-db.mjs",
-    "dev:api": "node --watch-path=server --watch-path=src/lib --watch-path=src/data --env-file-if-exists=.env server/index.js",
+    "dev:api": "node --watch --env-file-if-exists=.env server/index.js",
     "dev:web": "vite",
     "build": "vite build",
     "start": "node server/index.js",
