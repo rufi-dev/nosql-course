@@ -144,17 +144,34 @@
 
 /* ---------- Home: class rows ---------- */
 .td-create {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
   padding: var(--s-4) var(--s-5);
   border: 1px solid var(--line);
   border-radius: var(--r-3);
   background: var(--card);
 }
-.td-create .field {
-  flex: 1 1 280px;
+/* Input and button share one row at the same height; the hint sits under both. */
+.td-create__row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.td-create__row .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.td-create__row .btn {
+  flex: none;
+  min-height: 0;
+  padding-inline: 1.25em;
+}
+@media (max-width: 560px) {
+  .td-create__row {
+    flex-direction: column;
+  }
+  .td-create__row .btn {
+    width: 100%;
+    min-height: 44px;
+  }
 }
 .td-classes {
   list-style: none;

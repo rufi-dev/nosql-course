@@ -120,11 +120,11 @@ export default function TeacherHome() {
         <h2 id="create-h" className="visually-hidden">
           Create a class
         </h2>
-        <form className="td-create" onSubmit={create} noValidate>
-          <div className="field">
-            <label className="label" htmlFor="td-new-class">
-              New class
-            </label>
+        <form className="td-create field" onSubmit={create} noValidate>
+          <label className="label" htmlFor="td-new-class">
+            New class
+          </label>
+          <div className="td-create__row">
             <input
               id="td-new-class"
               className="input"
@@ -138,19 +138,19 @@ export default function TeacherHome() {
               aria-invalid={createError ? 'true' : undefined}
               aria-describedby={createError ? 'td-new-class-err' : 'td-new-class-hint'}
             />
-            {createError ? (
-              <span className="td-rowerror" id="td-new-class-err" role="alert">
-                {createError}
-              </span>
-            ) : (
-              <span className="hint" id="td-new-class-hint">
-                Each class gets its own private join code. You can make a new code at any time.
-              </span>
-            )}
+            <button type="submit" className="btn btn--primary" disabled={creating}>
+              <Icon name="plus" /> {creating ? 'Creating…' : 'Create class'}
+            </button>
           </div>
-          <button type="submit" className="btn btn--primary" disabled={creating}>
-            <Icon name="plus" /> {creating ? 'Creating…' : 'Create class'}
-          </button>
+          {createError ? (
+            <span className="td-rowerror" id="td-new-class-err" role="alert">
+              {createError}
+            </span>
+          ) : (
+            <span className="hint" id="td-new-class-hint">
+              Each class gets its own private join code. You can make a new code at any time.
+            </span>
+          )}
         </form>
       </section>
 
