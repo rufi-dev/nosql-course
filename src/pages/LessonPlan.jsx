@@ -256,18 +256,18 @@ export default function LessonPlan() {
           ))}
         </div>
         <div className="lp-timer__controls">
-          <button type="button" className="btn btn--icon" onClick={() => jump(current - 1)} aria-label="Previous segment">
+          <button type="button" className="btn btn--icon lp-timer__prev" onClick={() => jump(current - 1)} aria-label="Previous segment">
             <Icon name="chevron-left" />
           </button>
-          <button type="button" className="btn btn--primary" onClick={() => setRunning((r) => !r)} aria-pressed={running}>
+          <button type="button" className="btn btn--primary lp-timer__play" onClick={() => setRunning((r) => !r)} aria-pressed={running}>
             <Icon name={running ? 'pause' : 'play'} /> {running ? 'Pause' : elapsed > 0 ? 'Resume' : 'Start class'}
           </button>
-          <button type="button" className="btn btn--icon" onClick={() => jump(current + 1)} aria-label="Next segment">
+          <button type="button" className="btn btn--icon lp-timer__next" onClick={() => jump(current + 1)} aria-label="Next segment">
             <Icon name="chevron-right" />
           </button>
           <button
             type="button"
-            className="btn btn--ghost"
+            className="btn btn--ghost lp-timer__reset"
             onClick={() => {
               setRunning(false)
               setElapsed(0)
@@ -275,7 +275,7 @@ export default function LessonPlan() {
           >
             <Icon name="reset" /> Reset
           </button>
-          <button type="button" className="btn btn--dark" onClick={() => setProjector(true)}>
+          <button type="button" className="btn btn--dark lp-timer__proj" onClick={() => setProjector(true)}>
             <Icon name="maximize" /> Projector mode
           </button>
         </div>
