@@ -5,7 +5,7 @@ A full-stack course site for the 90-minute lesson *NoSQL, NewSQL and Distributed
 - **Frontend:** React 19 + Vite, with motion animations and a custom design system.
 - **Backend:** Node.js (Express 5) JSON API.
 - **Database:** PostgreSQL. Migrations run automatically on start.
-- **Hosting:** Render. The Blueprint is in `render.yaml`.
+- **Hosting:** Vercel (the app on Vercel's CDN, the API as one function) with a Neon PostgreSQL database. Render also works (`render.yaml`).
 
 The structure follows the *Design of Adaptive Systems* MOOC reference (course home, module page, lecture, book, H5P-style diagram, virtual labs, quiz, assignment, workshop, forum, grades, badges). The pedagogy follows *How to Develop an Interactive Lesson*.
 
@@ -50,7 +50,9 @@ Teacher sign-up is open by default, so testers can each create a teacher account
 - **Server-side locks:** stage locks and completion rules are enforced by the server (`src/lib/progressRules.js`). A student cannot save work in a stage their class has not reached, or tick an activity without the evidence (90% of a lecture watched, all chapters opened, all lab checkpoints, a passed quiz, and so on).
 - **Join codes:** live only in the database. Teachers see them; students never receive them.
 
-Limitation: the labs run in the student's browser, so a determined student could forge lab checkpoints through the API. Quiz grading, submissions, reviews and forum posts are server-side.
+Limitations:
+- The labs run in the student's browser, so a determined student could forge lab checkpoints through the API. Quiz grading, submissions, reviews and forum posts are server-side.
+- On Vercel, rate limits are counted per function instance rather than across the whole site.
 
 ## Run locally
 
@@ -72,36 +74,46 @@ Other scripts:
 |---|---|
 | `npm test` | API integration tests against the local test database. Needs `npm run dev:db` running. |
 | `npm run build` then `npm start` | Production mode: Express serves the API and the built app on one port. |
-| `npm run lint` | oxlint over `src` and `server`. |
+| `npm run lint` | oxlint over `src`, `server` and `api`. |
 
-## Deploy on Render
+## Deploy on Vercel (recommended)
+
+The pages load instantly from Vercel's CDN. The API runs as one function (`api/index.js`), and the database is Neon PostgreSQL. Both have free plans, and nothing needs to stay running.
 
 1. Push this repository to GitHub.
-2. In Render, choose **New → Blueprint** and pick the repository. Render reads `render.yaml` and creates:
-   - a PostgreSQL database `nosql-course-db`,
-   - a web service `nosql-course`, with `DATABASE_URL` linked automatically.
-3. When asked, set **`ADMIN_EMAIL`** to the email you will sign up with.
-4. After the first deploy, open the service URL and sign up with that email. You are the admin teacher.
+2. On vercel.com: **Add New → Project**, import the repository. Vercel reads `vercel.json` (Vite build, `/api` function, security headers).
+3. Under **Environment Variables** add `ADMIN_EMAIL`, then **Deploy**. Until a database is connected, the pages load but sign-in shows an error.
+4. In the project: **Storage → Create Database → Neon**. Pick the free plan and a region near the functions (Vercel's default is Washington, D.C., so AWS US East 1), and connect it to all environments with the default variable names. This adds `DATABASE_URL` and `DATABASE_URL_UNPOOLED`.
+5. **Deployments → Redeploy**. The first API request creates the tables.
+6. Open the site and sign up with your `ADMIN_EMAIL`. You are the admin teacher.
 
-Free tier limits:
-- Free PostgreSQL databases expire 30 days after creation, and their data is deleted 14 days later unless you upgrade. Only one free database is allowed per account.
-- Free web services sleep after 15 minutes without traffic, and the first request then takes about a minute.
+Free plan notes:
+- Neon pauses the database after 5 minutes without queries and wakes it in about a second. The free plan includes 100 compute hours a month per project and 1 GB of storage, and it does not expire.
+- Vercel's free Hobby plan is for personal, non-commercial use.
 
-Upgrade the database (at least) before real students rely on it.
+## Deploy on Render (alternative)
 
-Environment variables:
+1. In Render, choose **New → Blueprint** and pick the repository. Render reads `render.yaml` and creates a PostgreSQL database `nosql-course-db` and a web service `nosql-course`, with `DATABASE_URL` linked automatically.
+2. When asked, set **`ADMIN_EMAIL`**, then sign up with that email after the first deploy.
+
+Free tier limits: the web service sleeps after 15 minutes without traffic (the next visit waits about a minute), and free databases expire 30 days after creation.
+
+## Environment variables
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_URL` | yes | Set by the Blueprint from the linked database. |
+| `DATABASE_URL` | yes | Set by the Neon integration on Vercel, or by the Render Blueprint. |
+| `DATABASE_URL_UNPOOLED` | no | Direct connection used for migrations. Set by the Neon integration. |
 | `ADMIN_EMAIL` | yes | This account becomes the admin teacher on sign-up. |
 | `TEACHER_SIGNUP` | no | `open` (default): anyone can create a teacher account. `closed`: only the admin can make teachers. |
-| `DATABASE_SSL` | no | Set to `true` only when connecting through an external URL that requires TLS. |
+| `DATABASE_SSL` | no | Set to `true` only for a TLS URL without `sslmode` in it. Neon URLs need nothing extra. |
 | `PORT` | no | Set by Render. |
 
 ## Project layout
 
 ```
+api/index.js          Vercel function: runs the Express API, applies migrations on cold start
+vercel.json           Vercel build, routing and security headers
 server/
   index.js            Express app: security headers, rate limits, /api, static app
   db.js, migrations/  PostgreSQL pool and SQL migrations (applied on start)
@@ -114,7 +126,7 @@ src/
   lib/session.js, sync.js, api.js   accounts and automatic progress sync
   pages/              learner pages, auth pages, teacher dashboard (pages/teacher)
   data/course.js      course facts, outcomes, activities, stages, labs, badges, 90-minute plan
-render.yaml           Render Blueprint
+render.yaml           Render Blueprint (alternative host)
 tests/api.test.mjs    API integration tests
 ```
 

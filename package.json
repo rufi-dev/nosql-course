@@ -10,7 +10,7 @@
     "dev:web": "vite",
     "build": "vite build",
     "start": "node server/index.js",
-    "lint": "oxlint src server",
+    "lint": "oxlint src server api",
     "test": "node --test tests/*.test.mjs",
     "preview": "npm run build && node --env-file-if-exists=.env server/index.js"
   },

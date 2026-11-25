@@ -1,4 +1,5 @@
 // HTTP server: JSON API under /api, the built React app for everything else.
+// On Vercel the same app runs as one function (api/index.js) and the CDN serves the app.
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -20,10 +21,10 @@ import teacherRoutes, { adminRouter } from './routes/teacher.js'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dist = path.join(root, 'dist')
 
-export function createApp() {
+export function createApp({ frontend = true } = {}) {
   const app = express()
   app.disable('x-powered-by')
-  app.set('trust proxy', 1) // Render terminates TLS in front of the app
+  app.set('trust proxy', 1) // Render and Vercel terminate TLS in front of the app
 
   app.use(
     helmet({
@@ -87,6 +88,7 @@ export function createApp() {
   app.use('/api', api)
 
   // ---------- Built frontend ----------
+  if (!frontend) return app
   if (fs.existsSync(dist)) {
     app.use('/assets', express.static(path.join(dist, 'assets'), { immutable: true, maxAge: '1y', index: false }))
     app.use(
